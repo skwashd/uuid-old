@@ -1,0 +1,4 @@
+; $Id: uuid.info,v 1.1 2008/10/21 16:37:06 recidive Exp $
+name = Universally Unique IDentifier (UUID)
+description = "Generate Universally Unique IDentifier (UUID) for content."
+core = 6.x
