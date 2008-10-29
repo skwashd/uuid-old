@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid_user.inc,v 1.2 2008/10/29 17:51:26 recidive Exp $
+// $Id: uuid_user.inc,v 1.1.2.1 2008/10/29 17:52:19 recidive Exp $
 
 /**
  * Implementation of hook_user().
