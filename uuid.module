@@ -1,14 +1,47 @@
 <?php
-// $Id: uuid.module,v 1.1 2008/10/21 16:37:06 recidive Exp $
+// $Id: uuid.module,v 1.1.2.1 2009/05/13 20:52:49 recidive Exp $
 
 /**
- * Implementation of hook_init().
+ * Implementation of hook_nodeapi().
  */
-function uuid_init() {
-  $modules = array('node', 'user');
-  foreach ($modules as $module) {
-    if (module_exists($module)) {
-      module_load_include('inc', 'uuid', 'uuid_' . $module);
-    }
+function uuid_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'load':
+      return array(
+        'uuid' => db_result(db_query('SELECT uuid FROM {uuid_node} WHERE nid = %d', $node->nid)),
+        'revision_uuid' => db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid))
+      );
+    case 'insert':
+      db_query('INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, UUID())', $node->nid);
+      db_query('INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())', $node->vid);
+      break;
+    case 'update':
+      if ($node->revision) {
+        db_query('INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())', $node->vid);
+      }
+      break;
+    case 'delete':
+      db_query('DELETE FROM {uuid_node} WHERE nid = %d', $node->nid);
+      break;
+    case 'delete revision':
+      db_query('DELETE FROM {uuid_node_revisions} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function uuid_user($op, &$edit, &$user, $category = NULL) {
+  switch ($op) {
+    case 'load':
+      $user->uuid = db_result(db_query('SELECT uuid FROM {uuid_users} WHERE uid = %d', $user->uid));
+      break;
+    case 'insert':
+      db_query('INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, UUID())', $user->uid);
+      break;
+    case 'delete':
+      db_query('DELETE FROM {uuid_users} WHERE uid = %d', $node->uid);
+      break;
   }
 }
