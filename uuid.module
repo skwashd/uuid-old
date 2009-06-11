@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.2 2009/05/19 21:55:41 recidive Exp $
+// $Id: uuid.module,v 1.1.2.3 2009/06/11 18:01:13 recidive Exp $
 
 /**
  * Implementation of hook_menu()
@@ -124,9 +124,9 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
       break;
     case 'insert':
       if (isset($user->uuid) && uuid_is_valid($user->uuid)) {
-        db_query('INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, UUID())', $user->uid);
+        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
       } else if (variable_get('uuid_automatic_for_users', FALSE)) {
-        db_query("INSERT INTO {uuid_users} (nid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
+        db_query('INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, UUID())', $user->uid);
       }
       break;
     case 'update':
@@ -134,7 +134,7 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
         $exists = db_result(db_query('SELECT 1 FROM {uuid_users} WHERE uid = %d', $user->uid));
 
         if (!$exists) {
-          db_query("INSERT INTO {uuid_users} (nid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
+          db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
         }
       }
       break;
