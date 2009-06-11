@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.3 2009/06/11 18:01:13 recidive Exp $
+// $Id: uuid.module,v 1.1.2.4 2009/06/11 18:07:13 recidive Exp $
 
 /**
  * Implementation of hook_menu()
@@ -33,9 +33,9 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
         'revision_uuid' => db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid))
       );
     case 'insert':
-      // Handle the case where automatic UUID generation is turned OFF
-      // but a node is created, node_save(), intentionally with the
-      // $node->uuid attribute.
+      // Handle the case where automatic UUID generation is turned OFF but a
+      // node is created, node_save(), intentionally with the $node->uuid
+      // attribute.
       if (isset($node->uuid) && uuid_is_valid($node->uuid)) {
         db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
 
@@ -76,7 +76,7 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
  *
  * @return $node or FALSE
  *   Either the $node object, or FALSE on failure.
- **/
+ */
 function node_get_by_uuid($uuid) {
   $nid = db_result(db_query(db_rewrite_sql(
     "SELECT n.nid
@@ -96,7 +96,7 @@ function node_get_by_uuid($uuid) {
 
 /**
  * Returns the node associated with a revision UUID.
- **/
+ */
 function node_get_by_revision_uuid($revision_uuid) {
   $node = db_fetch_object(db_query(db_rewrite_sql(
     "SELECT n.nid, n.vid
@@ -125,7 +125,8 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
     case 'insert':
       if (isset($user->uuid) && uuid_is_valid($user->uuid)) {
         db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
-      } else if (variable_get('uuid_automatic_for_users', FALSE)) {
+      }
+      else if (variable_get('uuid_automatic_for_users', FALSE)) {
         db_query('INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, UUID())', $user->uid);
       }
       break;
@@ -149,7 +150,7 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
  *
  * @return $account or FALSE
  *   Either the $account object, or FALSE on failure.
- **/
+ */
 function user_get_by_uuid($uuid) {
   $uid = db_result(db_query("SELECT uid FROM {uuid_users} uuid = '%s'"));
 
@@ -163,7 +164,7 @@ function user_get_by_uuid($uuid) {
 
 /**
  * Determines if a UUID is valid.
- **/
+ */
 function uuid_is_valid($uuid) {
   return (boolean) preg_match('/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$/', $uuid);
 }
