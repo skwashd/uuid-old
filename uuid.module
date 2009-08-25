@@ -1,14 +1,170 @@
 <?php
-// $Id: uuid.module,v 1.1 2008/10/21 16:37:06 recidive Exp $
+// $Id: uuid.module,v 1.2 2009/08/25 15:34:07 recidive Exp $
 
 /**
- * Implementation of hook_init().
+ * Implementation of hook_menu()
  */
-function uuid_init() {
-  $modules = array('node', 'user');
-  foreach ($modules as $module) {
-    if (module_exists($module)) {
-      module_load_include('inc', 'uuid', 'uuid_' . $module);
-    }
+function uuid_menu() {
+  $items = array();
+
+  $items['admin/settings/uuid'] = array(
+    'title' => 'Universally Unique IDentifier',
+    'description' => 'UUID generation settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uuid_admin'),
+    'access arguments' => array('administer content types'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'uuid.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function uuid_nodeapi(&$node, $op, $teaser, $page) {
+  $automatic_types = variable_get('uuid_automatic_for_nodes', array());
+
+  switch ($op) {
+    case 'load':
+      return array(
+        'uuid' => db_result(db_query('SELECT uuid FROM {uuid_node} WHERE nid = %d', $node->nid)),
+        'revision_uuid' => db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid))
+      );
+    case 'insert':
+      // Handle the case where automatic UUID generation is turned OFF but a
+      // node is created, node_save(), intentionally with the $node->uuid
+      // attribute.
+      if (isset($node->uuid) && uuid_is_valid($node->uuid)) {
+        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
+
+        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+        }
+        else {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())", $node->vid);
+        }
+      }
+      else if (in_array($node->type, $automatic_types)) {
+        db_query('INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, UUID())', $node->nid);
+        db_query('INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())', $node->vid);
+      }
+      break;
+    case 'update':
+      if ($node->revision) {
+        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+        }
+        else {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())", $node->vid);
+        }
+      }
+      break;
+    case 'delete':
+      db_query('DELETE FROM {uuid_node} WHERE nid = %d', $node->nid);
+      break;
+    case 'delete revision':
+      db_query('DELETE FROM {uuid_node_revisions} WHERE vid = %d', $node->vid);
+      break;
   }
+}
+
+/**
+ * Returns the node associated with a UUID.  Uses db_rewrite_sql() to
+ * ensure node_access rules are preserved.
+ *
+ * @return $node or FALSE
+ *   Either the $node object, or FALSE on failure.
+ */
+function node_get_by_uuid($uuid) {
+  $nid = db_result(db_query(db_rewrite_sql(
+    "SELECT n.nid
+     FROM {node} AS n
+     INNER JOIN {uuid_node} AS un ON n.nid = un.nid
+     WHERE un.uuid = '%s'"),
+    $uuid
+  ));
+
+  if ($nid) {
+    return node_load($nid);
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Returns the node associated with a revision UUID.
+ */
+function node_get_by_revision_uuid($revision_uuid) {
+  $node = db_fetch_object(db_query(db_rewrite_sql(
+    "SELECT n.nid, n.vid
+     FROM {node} AS n
+     INNER JOIN {uuid_node_revisions} AS unr ON n.vid = unr.vid
+     WHERE unr.uuid = '%s'"),
+    $revision_uuid
+  ));
+
+  if ($node->nid && $node->vid) {
+    return node_load($node->nid, $node->vid);
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function uuid_user($op, &$edit, &$user, $category = NULL) {
+  switch ($op) {
+    case 'load':
+      $user->uuid = db_result(db_query('SELECT uuid FROM {uuid_users} WHERE uid = %d', $user->uid));
+      break;
+    case 'insert':
+      if (isset($user->uuid) && uuid_is_valid($user->uuid)) {
+        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
+      }
+      else if (variable_get('uuid_automatic_for_users', FALSE)) {
+        db_query('INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, UUID())', $user->uid);
+      }
+      break;
+    case 'update':
+      if (isset($user->uuid) && uuid_is_valid($user->uuid)) {
+        $exists = db_result(db_query('SELECT 1 FROM {uuid_users} WHERE uid = %d', $user->uid));
+
+        if (!$exists) {
+          db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
+        }
+      }
+      break;
+    case 'delete':
+      db_query('DELETE FROM {uuid_users} WHERE uid = %d', $node->uid);
+      break;
+  }
+}
+
+/**
+ * Returns the user associated with a UUID.
+ *
+ * @return $account or FALSE
+ *   Either the $account object, or FALSE on failure.
+ */
+function user_get_by_uuid($uuid) {
+  $uid = db_result(db_query("SELECT uid FROM {uuid_users} uuid = '%s'"));
+
+  if ($uid) {
+    return user_load(array('uid' => $uid));
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Determines if a UUID is valid.
+ */
+function uuid_is_valid($uuid) {
+  return (boolean) preg_match('/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$/', $uuid);
 }

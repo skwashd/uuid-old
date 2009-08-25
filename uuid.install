@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1 2008/10/21 16:37:06 recidive Exp $
+// $Id: uuid.install,v 1.2 2009/08/25 15:34:07 recidive Exp $
 
 /**
  * Implementation of hook_install().
@@ -8,11 +8,8 @@ function uuid_install() {
   // Create tables.
   drupal_install_schema('uuid');
 
-  // Build UUIDs.
-  $tables = array('node' => 'nid', 'users' => 'uid');
-  foreach ($tables as $table => $key) {
-    db_query('INSERT INTO {uuid_' . $table . '} SELECT ' . $key . ', UUID() FROM {' . $table . '}');
-  }
+  require_once(dirname(__FILE__) . '/uuid.admin.inc');
+  uuid_sync();
 }
 
 /**
@@ -20,10 +17,11 @@ function uuid_install() {
  */
 function uuid_schema() {
   return array(
-    'uuid_node' => uuid_table_schema('nid'),
-    'uuid_users' => uuid_table_schema('uid'),
+    'uuid_node' => uuid_table_schema('node', 'nid'),
+    'uuid_users' => uuid_table_schema('users', 'uid'),
+    'uuid_node_revisions' => uuid_table_schema('node_revisions', 'vid'),
   );
-} 
+}
 
 /**
  * Return schema for a uuid table.
@@ -33,7 +31,7 @@ function uuid_schema() {
  * @return
  *   Array with table structure definition (schema).
  */
-function uuid_table_schema($key = 'key') {
+function uuid_table_schema($table, $key = 'key') {
   return array(
     'fields' => array(
       $key => array(
@@ -51,13 +49,20 @@ function uuid_table_schema($key = 'key') {
         'description' => t('The Universally Unique Identifier.'),
       ),
     ),
-    'primary key' => array($key, 'uuid'),
+    'primary key' => array($key),
+    'indexes' => array(
+      'uuid_'. $table .'_uuid_idx' => array('uuid'),
+    ),
   );
 }
 
 /**
  * Implementation of hook_uninstall().
  */
-function content_uninstall() {
+function uuid_uninstall() {
+  variable_del('uuid_automatic_for_nodes');
+  variable_del('uuid_automatic_for_users');
+
+  // Remove tables.
   drupal_uninstall_schema('uuid');
 }
