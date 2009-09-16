@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.4 2009/06/11 18:07:13 recidive Exp $
+// $Id: uuid.module,v 1.1.2.5 2009/09/16 05:07:59 recidive Exp $
 
 /**
  * Implementation of hook_menu()
@@ -152,7 +152,7 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
  *   Either the $account object, or FALSE on failure.
  */
 function user_get_by_uuid($uuid) {
-  $uid = db_result(db_query("SELECT uid FROM {uuid_users} uuid = '%s'"));
+  $uid = db_result(db_query("SELECT uid FROM {uuid_users} uuid = '%s'", $uuid));
 
   if ($uid) {
     return user_load(array('uid' => $uid));
