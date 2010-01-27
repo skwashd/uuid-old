@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1.2.3 2009/09/01 02:00:38 recidive Exp $
+// $Id: uuid.install,v 1.1.2.4 2010/01/27 12:58:20 recidive Exp $
 
 /**
  * Implementation of hook_enable().
@@ -67,7 +67,20 @@ function uuid_table_schema($table, $key = 'key') {
 function uuid_uninstall() {
   variable_del('uuid_automatic_for_nodes');
   variable_del('uuid_automatic_for_users');
-
+  variable_del('uuid_automatic_for_taxonomy');
+  
   // Remove tables.
   drupal_uninstall_schema('uuid');
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function uuid_update_6001() {
+  $ret = array();
+  
+  db_create_table($ret, 'uuid_vocabulary', uuid_table_schema('vocabulary', 'vid'));
+  db_create_table($ret, 'uuid_term_data', uuid_table_schema('term_data', 'tid'));
+  
+  return $ret;
 }

@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.5 2009/09/16 05:07:59 recidive Exp $
+// $Id: uuid.module,v 1.1.2.6 2010/01/27 12:58:20 recidive Exp $
 
 /**
  * Implementation of hook_menu()
@@ -159,6 +159,35 @@ function user_get_by_uuid($uuid) {
   }
   else {
     return FALSE;
+  }
+}
+
+/**
+ * Implementation of hook_taxonomy().
+ */
+function uuid_taxonomy($op, $type, $array = NULL) {
+  $types = array(
+    'term' => array(
+      'table' => 'uuid_term_data',
+      'field' => 'tid',
+    ),
+    'vocabulary' => array(
+      'table' => 'uuid_vocabulary',
+      'field' => 'vid',
+    ),
+  );
+  
+  if (array_key_exists($type, $types) && in_array($array['vid'], variable_get('uuid_automatic_for_taxonomy', array()))) {
+    $field = $types[$type]['field'];
+    switch ($op) {
+      case 'insert':
+        db_query("INSERT INTO {" . $types[$type]['table'] . "} ($field, uuid) VALUES (%d, UUID())",
+          $array[$types[$type]['field']]);
+        break;
+      case 'delete':
+        db_query("DELETE FROM {". $types[$type]['table'] ."} WHERE $field = %d", $array[$types[$type]['field']]);
+        break;
+    }
   }
 }
 

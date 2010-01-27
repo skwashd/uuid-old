@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.admin.inc,v 1.1.2.2 2009/06/11 18:07:13 recidive Exp $
+// $Id: uuid.admin.inc,v 1.1.2.3 2010/01/27 12:58:20 recidive Exp $
 
 /**
  * Menu callback: options for UUID.
@@ -32,6 +32,28 @@ function uuid_admin() {
     '#description' => t('Should UUIDs be created automatically for every existing, and new user?'),
     '#required' => FALSE,
   );
+  
+  $form['taxonomy'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Taxonomy UUID Settings'),
+  );
+  
+  if ($options = array_map(create_function('$voc', 'return $voc->name;'), taxonomy_get_vocabularies())) {
+    $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Automatic UUIDs for taxonomy'),
+      '#default_value' => variable_get('uuid_automatic_for_taxonomy', array()),
+      '#options' => $options,
+      '#description' => t('Selected vocabularies to have UUIDs automatically generated.'),
+      '#required' => FALSE,
+    );
+  }
+  else {
+    $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
+      '#type' => 'item',
+      '#value' => t('There is currently no vocabulary defined.'),
+    );
+  }
 
   // TODO: Is this "sync" button really necessary?  Handle this better.
   $form['settings'] = array(
@@ -63,6 +85,15 @@ function uuid_sync() {
   foreach (variable_get('uuid_automatic_for_nodes', array()) as $type) {
     db_query("INSERT INTO {uuid_node} SELECT n.nid, UUID() FROM {node} AS n WHERE n.type = '%s' AND NOT EXISTS (SELECT nid FROM {uuid_node} WHERE nid = n.nid)", $type);
     db_query("INSERT INTO {uuid_node_revisions} SELECT nr.vid, UUID() FROM {node_revisions} AS nr INNER JOIN {node} n ON nr.nid = n.nid WHERE n.type = '%s' AND NOT EXISTS (SELECT vid FROM {uuid_node_revisions} WHERE vid = nr.vid)", $type);
+  }
+  
+  $vids = variable_get('uuid_automatic_for_taxonomy', array());
+  if ($vids) {
+    $placehoders = implode(', ', array_fill(0, count($vids), '%d'));
+    // Vocabularies
+    db_query("INSERT INTO {uuid_vocabulary} SELECT v.vid, UUID() FROM {vocabulary} AS v WHERE v.vid IN ($placehoders) AND NOT EXISTS (SELECT vid FROM {uuid_vocabulary} WHERE vid = v.vid)", $vids);
+    // Terms
+    db_query("INSERT INTO {uuid_term_data} SELECT td.tid, UUID() FROM {term_data} AS td WHERE td.vid IN ($placehoders) AND NOT EXISTS (SELECT tid FROM {uuid_term_data} WHERE tid = td.tid)", $vids);
   }
 
   drupal_set_message(t("UUID tables have been updated."));
