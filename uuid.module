@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.2 2009/08/25 15:34:07 recidive Exp $
+// $Id: uuid.module,v 1.3 2010/03/19 07:18:18 recidive Exp $
 
 /**
  * Implementation of hook_menu()
@@ -152,13 +152,42 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
  *   Either the $account object, or FALSE on failure.
  */
 function user_get_by_uuid($uuid) {
-  $uid = db_result(db_query("SELECT uid FROM {uuid_users} uuid = '%s'"));
+  $uid = db_result(db_query("SELECT uid FROM {uuid_users} uuid = '%s'", $uuid));
 
   if ($uid) {
     return user_load(array('uid' => $uid));
   }
   else {
     return FALSE;
+  }
+}
+
+/**
+ * Implementation of hook_taxonomy().
+ */
+function uuid_taxonomy($op, $type, $array = NULL) {
+  $types = array(
+    'term' => array(
+      'table' => 'uuid_term_data',
+      'field' => 'tid',
+    ),
+    'vocabulary' => array(
+      'table' => 'uuid_vocabulary',
+      'field' => 'vid',
+    ),
+  );
+  
+  if (array_key_exists($type, $types) && in_array($array['vid'], variable_get('uuid_automatic_for_taxonomy', array()))) {
+    $field = $types[$type]['field'];
+    switch ($op) {
+      case 'insert':
+        db_query("INSERT INTO {" . $types[$type]['table'] . "} ($field, uuid) VALUES (%d, UUID())",
+          $array[$types[$type]['field']]);
+        break;
+      case 'delete':
+        db_query("DELETE FROM {". $types[$type]['table'] ."} WHERE $field = %d", $array[$types[$type]['field']]);
+        break;
+    }
   }
 }
 

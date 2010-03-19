@@ -1,5 +1,13 @@
 <?php
-// $Id: uuid.install,v 1.2 2009/08/25 15:34:07 recidive Exp $
+// $Id: uuid.install,v 1.3 2010/03/19 07:18:18 recidive Exp $
+
+/**
+ * Implementation of hook_enable().
+ */
+function uuid_enable() {
+  module_load_include('inc', 'uuid', 'uuid.admin');
+  uuid_sync();
+}
 
 /**
  * Implementation of hook_install().
@@ -7,9 +15,6 @@
 function uuid_install() {
   // Create tables.
   drupal_install_schema('uuid');
-
-  require_once(dirname(__FILE__) . '/uuid.admin.inc');
-  uuid_sync();
 }
 
 /**
@@ -62,7 +67,20 @@ function uuid_table_schema($table, $key = 'key') {
 function uuid_uninstall() {
   variable_del('uuid_automatic_for_nodes');
   variable_del('uuid_automatic_for_users');
-
+  variable_del('uuid_automatic_for_taxonomy');
+  
   // Remove tables.
   drupal_uninstall_schema('uuid');
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function uuid_update_6001() {
+  $ret = array();
+  
+  db_create_table($ret, 'uuid_vocabulary', uuid_table_schema('vocabulary', 'vid'));
+  db_create_table($ret, 'uuid_term_data', uuid_table_schema('term_data', 'tid'));
+  
+  return $ret;
 }
