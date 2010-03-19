@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.6 2010/01/27 12:58:20 recidive Exp $
+// $Id: uuid.module,v 1.1.2.7 2010/03/19 08:13:01 recidive Exp $
 
 /**
  * Implementation of hook_menu()
@@ -9,7 +9,7 @@ function uuid_menu() {
 
   $items['admin/settings/uuid'] = array(
     'title' => 'Universally Unique IDentifier',
-    'description' => 'UUID generation settings',
+    'description' => 'Configure automatically UUID generation settings.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('uuid_admin'),
     'access arguments' => array('administer content types'),
