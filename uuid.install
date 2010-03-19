@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1.2.4 2010/01/27 12:58:20 recidive Exp $
+// $Id: uuid.install,v 1.1.2.5 2010/03/19 07:38:22 recidive Exp $
 
 /**
  * Implementation of hook_enable().
@@ -23,8 +23,10 @@ function uuid_install() {
 function uuid_schema() {
   return array(
     'uuid_node' => uuid_table_schema('node', 'nid'),
-    'uuid_users' => uuid_table_schema('users', 'uid'),
     'uuid_node_revisions' => uuid_table_schema('node_revisions', 'vid'),
+    'uuid_users' => uuid_table_schema('users', 'uid'),
+    'uuid_vocabulary' => uuid_table_schema('vocabulary', 'vid'),
+    'uuid_term_data' => uuid_table_schema('term_data', 'tid'),
   );
 }
 
