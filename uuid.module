@@ -1,8 +1,8 @@
 <?php
-// $Id: uuid.module,v 1.1.2.8 2010/04/01 08:33:05 recidive Exp $
+// $Id: uuid.module,v 1.1.2.9 2010/04/02 02:07:35 recidive Exp $
 
 /**
- * Implementation of hook_menu()
+ * Implementation of hook_menu().
  */
 function uuid_menu() {
   $items = array();
@@ -43,12 +43,12 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
           db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
         }
         else {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())", $node->vid);
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
         }
       }
       else if (in_array($node->type, $automatic_types)) {
-        db_query('INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, UUID())', $node->nid);
-        db_query('INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())', $node->vid);
+        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, uuid_uuid());
+        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
       }
       break;
     case 'update':
@@ -57,7 +57,7 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
           db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
         }
         else {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, UUID())", $node->vid);
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
         }
       }
       break;
@@ -127,7 +127,7 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
         db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
       }
       else if (variable_get('uuid_automatic_for_users', FALSE)) {
-        db_query('INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, UUID())', $user->uid);
+        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, uuid_uuid());
       }
       break;
     case 'update':
@@ -181,8 +181,8 @@ function uuid_taxonomy($op, $type, $array = NULL) {
     $field = $types[$type]['field'];
     switch ($op) {
       case 'insert':
-        db_query("INSERT INTO {" . $types[$type]['table'] . "} ($field, uuid) VALUES (%d, UUID())",
-          $array[$types[$type]['field']]);
+        db_query("INSERT INTO {" . $types[$type]['table'] . "} ($field, uuid) VALUES (%d, '%s')",
+          $array[$types[$type]['field']], uuid_uuid());
         break;
       case 'delete':
         db_query("DELETE FROM {". $types[$type]['table'] ."} WHERE $field = %d", $array[$types[$type]['field']]);
@@ -196,4 +196,41 @@ function uuid_taxonomy($op, $type, $array = NULL) {
  */
 function uuid_is_valid($uuid) {
   return (boolean) preg_match('/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$/', $uuid);
+}
+
+/**
+ * Generate and return an Universally Unique IDentifier (UUID).
+ *
+ * @return
+ *   An UUID, made up of 32 hex digits and 4 hyphens.
+ * @see http://www.ietf.org/rfc/rfc4122.txt
+ * @see http://php.net/manual/en/function.uniqid.php#65879
+ */
+function uuid_uuid() {
+  // If we're not using postgres, the database will give us a UUID.
+  if ($GLOBALS['db_type'] != 'pgsql') {
+    return db_result(db_query('SELECT UUID()'));
+  }
+
+  // If the function provided by the uuid pecl extension is available, use that.
+  if(function_exists('uuid_create')) {
+    return uuid_create(UUID_TYPE_DEFAULT);
+  }
+
+  // Fall back to generating a Universally Unique IDentifier version 4.
+  // Base on http://php.net/manual/en/function.uniqid.php#65879
+  // The field names refer to RFC 4122 section 4.1.2.
+  return sprintf('%04x%04x-%04x-%03x4-%04x-%04x%04x%04x',
+    // 32 bits for "time_low".
+    mt_rand(0, 65535), mt_rand(0, 65535),
+    // 16 bits for "time_mid".
+    mt_rand(0, 65535),
+    // 12 bits before the 0100 of (version) 4 for "time_hi_and_version".
+    mt_rand(0, 4095),
+    bindec(substr_replace(sprintf('%016b', mt_rand(0, 65535)), '01', 6, 2)),
+    // 8 bits, the last two of which (positions 6 and 7) are 01, for "clk_seq_hi_res"
+    // (hence, the 2nd hex digit after the 3rd hyphen can only be 1, 5, 9 or d)
+    // 8 bits for "clk_seq_low" 48 bits for "node".
+    mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(0, 65535)
+  );
 }

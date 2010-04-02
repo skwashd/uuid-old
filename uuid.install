@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1.2.5 2010/03/19 07:38:22 recidive Exp $
+// $Id: uuid.install,v 1.1.2.6 2010/04/02 02:07:35 recidive Exp $
 
 /**
  * Implementation of hook_enable().
@@ -57,8 +57,8 @@ function uuid_table_schema($table, $key = 'key') {
       ),
     ),
     'primary key' => array($key),
-    'indexes' => array(
-      'uuid_'. $table .'_uuid_idx' => array('uuid'),
+    'unique keys' => array(
+      'uuid_'. $table .'_uuid_key' => array('uuid'),
     ),
   );
 }
@@ -70,7 +70,7 @@ function uuid_uninstall() {
   variable_del('uuid_automatic_for_nodes');
   variable_del('uuid_automatic_for_users');
   variable_del('uuid_automatic_for_taxonomy');
-  
+
   // Remove tables.
   drupal_uninstall_schema('uuid');
 }
@@ -80,9 +80,26 @@ function uuid_uninstall() {
  */
 function uuid_update_6001() {
   $ret = array();
-  
+
   db_create_table($ret, 'uuid_vocabulary', uuid_table_schema('vocabulary', 'vid'));
   db_create_table($ret, 'uuid_term_data', uuid_table_schema('term_data', 'tid'));
-  
+
+  return $ret;
+}
+
+/**
+ * Implementation of hook_update().
+ *
+ * For each of out tables, drop the indexe on the UUID column and add
+ * a unique key on that column.
+ */
+function uuid_update_6002() {
+  $ret = array();
+
+  foreach (uuid_schema() as $table => $schema) {
+    db_drop_index($ret, $table, $table . '_uuid_idx');
+    db_add_unique_key($ret, $table, $table . '_uuid_key', array('uuid'));
+  }
+
   return $ret;
 }

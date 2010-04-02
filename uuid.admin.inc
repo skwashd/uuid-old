@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.admin.inc,v 1.1.2.4 2010/03/19 08:10:13 recidive Exp $
+// $Id: uuid.admin.inc,v 1.1.2.5 2010/04/02 02:07:35 recidive Exp $
 
 /**
  * Menu callback: options for UUID.
@@ -35,7 +35,7 @@ function uuid_admin() {
     ),
     '#description' => t('Should UUIDs be created automatically for users?'),
   );
-  
+
   $form['taxonomy'] = array(
     '#type' => 'fieldset',
     '#title' => t('Taxonomy settings'),
@@ -47,7 +47,7 @@ function uuid_admin() {
       '#title' => t('Automatic UUID generation for taxonomy'),
       '#default_value' => variable_get('uuid_automatic_for_taxonomy', array()),
       '#options' => $options,
-      '#description' => t("UUIDs will be created for the vocabulary and it's terms."),
+      '#description' => t("UUIDs will be created for the vocabulary and its terms."),
       '#required' => FALSE,
     );
   }
@@ -78,23 +78,50 @@ function uuid_admin() {
 function uuid_sync() {
   // Users.
   if (variable_get('uuid_automatic_for_users', FALSE)) {
-    db_query("INSERT INTO {uuid_users} SELECT u.uid, UUID() FROM {users} AS u WHERE NOT EXISTS (SELECT uid FROM {uuid_users} WHERE uid = u.uid)");
+    $result = db_query("SELECT uid FROM {users} WHERE uid NOT IN (SELECT uid FROM {uuid_users})");
+    while($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES(%d, '%s')", $item->uid, uuid_uuid());
+    }
   }
 
-  // Nodes.
-  foreach (variable_get('uuid_automatic_for_nodes', array()) as $type) {
-    db_query("INSERT INTO {uuid_node} SELECT n.nid, UUID() FROM {node} AS n WHERE n.type = '%s' AND NOT EXISTS (SELECT nid FROM {uuid_node} WHERE nid = n.nid)", $type);
-    db_query("INSERT INTO {uuid_node_revisions} SELECT nr.vid, UUID() FROM {node_revisions} AS nr INNER JOIN {node} n ON nr.nid = n.nid WHERE n.type = '%s' AND NOT EXISTS (SELECT vid FROM {uuid_node_revisions} WHERE vid = nr.vid)", $type);
+  $types = variable_get('uuid_automatic_for_nodes', array());
+
+  // Remove disabled node types.
+  $types = array_filter($types);
+  if (!empty($types)) {
+    $placeholders = db_placeholders($types, 'varchar');
+
+    // Nodes.
+    $result = db_query("SELECT nid FROM {node} WHERE type IN (" . $placeholders . ") AND nid NOT IN (SELECT nid FROM {uuid_node})", $types);
+    while ($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES(%d, '%s')", $item->nid, uuid_uuid());
+    }
+
+    // Revisions.
+    $result = db_query("SELECT nr.vid AS vid FROM {node_revisions} AS nr INNER JOIN {node} n ON nr.nid = n.nid WHERE n.type IN (" . $placeholders . ") AND nr.vid NOT IN (SELECT vid FROM {uuid_node_revisions})", $types);
+    while ($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES(%d, '%s')", $item->vid, uuid_uuid());
+    }
   }
 
-  // Taxonomy.
   $vids = variable_get('uuid_automatic_for_taxonomy', array());
+
+  // Remove disabled vocabularies.
+  $vids = array_filter($vids);
   if ($vids) {
-    $placehoders = implode(', ', array_fill(0, count($vids), '%d'));
+    $placeholders = db_placeholders($vids, 'int');
+
     // Vocabularies.
-    db_query("INSERT INTO {uuid_vocabulary} SELECT v.vid, UUID() FROM {vocabulary} AS v WHERE v.vid IN ($placehoders) AND NOT EXISTS (SELECT vid FROM {uuid_vocabulary} WHERE vid = v.vid)", $vids);
+    $result = db_query("SELECT v.vid FROM {vocabulary} AS v WHERE v.vid IN (" . $placeholders . ") AND NOT EXISTS (SELECT vid FROM {uuid_vocabulary} WHERE vid = v.vid)", $vids);
+    while ($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_vocabulary} (vid, uuid) VALUES(%d, '%s')", $item->vid, uuid_uuid());
+    }
+
     // Terms.
-    db_query("INSERT INTO {uuid_term_data} SELECT td.tid, UUID() FROM {term_data} AS td WHERE td.vid IN ($placehoders) AND NOT EXISTS (SELECT tid FROM {uuid_term_data} WHERE tid = td.tid)", $vids);
+    $result = db_query("SELECT td.tid FROM {term_data} AS td WHERE td.vid IN (" . $placeholders . ") AND NOT EXISTS (SELECT tid FROM {uuid_term_data} WHERE tid = td.tid)", $vids);
+    while ($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_term_data} (tid, uuid) VALUES(%d, '%s')", $item->tid, uuid_uuid());
+    }
   }
 
   drupal_set_message(t("UUID tables have been updated."));
