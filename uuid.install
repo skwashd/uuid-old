@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1.2.7 2010/04/02 02:17:52 recidive Exp $
+// $Id: uuid.install,v 1.1.2.8 2010/04/02 02:20:38 recidive Exp $
 
 /**
  * @file
@@ -52,14 +52,14 @@ function uuid_table_schema($table, $key = 'key') {
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
-        'description' => t('The primary key of the record which this UUID was generated for.'),
+        'description' => 'The primary key of the record which this UUID was generated for.',
       ),
       'uuid' => array(
         'type' => 'varchar',
         'length' => 64,
         'not null' => TRUE,
         'default' => '',
-        'description' => t('The Universally Unique Identifier.'),
+        'description' => 'The Universally Unique Identifier.',
       ),
     ),
     'primary key' => array($key),
