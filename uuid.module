@@ -1,5 +1,10 @@
 <?php
-// $Id: uuid.module,v 1.1.2.9 2010/04/02 02:07:35 recidive Exp $
+// $Id: uuid.module,v 1.1.2.10 2010/04/02 02:17:52 recidive Exp $
+
+/**
+ * @file
+ * Main module functions for the uuid module.
+ */
 
 /**
  * Implementation of hook_menu().
@@ -71,10 +76,10 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
 }
 
 /**
- * Returns the node associated with a UUID.  Uses db_rewrite_sql() to
- * ensure node_access rules are preserved.
+ * Returns the node associated with a UUID. Uses db_rewrite_sql() to ensure
+ * node_access rules are preserved.
  *
- * @return $node or FALSE
+ * @return
  *   Either the $node object, or FALSE on failure.
  */
 function node_get_by_uuid($uuid) {
@@ -96,6 +101,9 @@ function node_get_by_uuid($uuid) {
 
 /**
  * Returns the node associated with a revision UUID.
+ *
+ * @return
+ *   Either the $node object, or FALSE on failure.
  */
 function node_get_by_revision_uuid($revision_uuid) {
   $node = db_fetch_object(db_query(db_rewrite_sql(
@@ -148,7 +156,7 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
 /**
  * Returns the user associated with a UUID.
  *
- * @return $account or FALSE
+ * @return
  *   Either the $account object, or FALSE on failure.
  */
 function user_get_by_uuid($uuid) {
@@ -201,10 +209,11 @@ function uuid_is_valid($uuid) {
 /**
  * Generate and return an Universally Unique IDentifier (UUID).
  *
- * @return
- *   An UUID, made up of 32 hex digits and 4 hyphens.
  * @see http://www.ietf.org/rfc/rfc4122.txt
  * @see http://php.net/manual/en/function.uniqid.php#65879
+ *
+ * @return
+ *   An UUID, made up of 32 hex digits and 4 hyphens.
  */
 function uuid_uuid() {
   // If we're not using postgres, the database will give us a UUID.

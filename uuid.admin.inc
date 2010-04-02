@@ -1,5 +1,10 @@
 <?php
-// $Id: uuid.admin.inc,v 1.1.2.5 2010/04/02 02:07:35 recidive Exp $
+// $Id: uuid.admin.inc,v 1.1.2.6 2010/04/02 02:17:52 recidive Exp $
+
+/**
+ * @file
+ * Administration functions for the uuid module.
+ */
 
 /**
  * Menu callback: options for UUID.

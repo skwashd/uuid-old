@@ -1,5 +1,10 @@
 <?php
-// $Id: uuid.install,v 1.1.2.6 2010/04/02 02:07:35 recidive Exp $
+// $Id: uuid.install,v 1.1.2.7 2010/04/02 02:17:52 recidive Exp $
+
+/**
+ * @file
+ * Install, update and uninstall functions for the uuid module.
+ */
 
 /**
  * Implementation of hook_enable().
@@ -35,6 +40,7 @@ function uuid_schema() {
  *
  * @param $key
  *   Name of key field, e.g. nid for nodes.
+ *
  * @return
  *   Array with table structure definition (schema).
  */
@@ -76,7 +82,7 @@ function uuid_uninstall() {
 }
 
 /**
- * Implementation of hook_update().
+ * Create uuid_vocabulary and uuid_term_data tables.
  */
 function uuid_update_6001() {
   $ret = array();
@@ -88,10 +94,8 @@ function uuid_update_6001() {
 }
 
 /**
- * Implementation of hook_update().
- *
- * For each of out tables, drop the indexe on the UUID column and add
- * a unique key on that column.
+ * For each of out tables, drop the indexe on the UUID column and add a unique
+ * key on that column.
  */
 function uuid_update_6002() {
   $ret = array();
