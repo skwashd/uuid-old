@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.10 2010/04/02 02:17:52 recidive Exp $
+// $Id: uuid.module,v 1.1.2.11 2010/07/28 18:06:30 recidive Exp $
 
 /**
  * @file
@@ -189,8 +189,11 @@ function uuid_taxonomy($op, $type, $array = NULL) {
     $field = $types[$type]['field'];
     switch ($op) {
       case 'insert':
+        if (empty($array['uuid']) || !uuid_is_valid($array['uuid'])) {
+          $array['uuid'] = uuid_uuid();
+        }
         db_query("INSERT INTO {" . $types[$type]['table'] . "} ($field, uuid) VALUES (%d, '%s')",
-          $array[$types[$type]['field']], uuid_uuid());
+          $array[$types[$type]['field']], $array['uuid']);
         break;
       case 'delete':
         db_query("DELETE FROM {". $types[$type]['table'] ."} WHERE $field = %d", $array[$types[$type]['field']]);
