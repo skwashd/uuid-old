@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.admin.inc,v 1.1.2.6 2010/04/02 02:17:52 recidive Exp $
+// $Id: uuid.admin.inc,v 1.1.2.7 2010/07/28 18:10:55 recidive Exp $
 
 /**
  * @file
@@ -41,26 +41,28 @@ function uuid_admin() {
     '#description' => t('Should UUIDs be created automatically for users?'),
   );
 
-  $form['taxonomy'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Taxonomy settings'),
-  );
+  if (module_exists('taxonomy')) {
+    $form['taxonomy'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Taxonomy settings'),
+    );
 
-  if ($options = array_map(create_function('$voc', 'return $voc->name;'), taxonomy_get_vocabularies())) {
-    $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t('Automatic UUID generation for taxonomy'),
-      '#default_value' => variable_get('uuid_automatic_for_taxonomy', array()),
-      '#options' => $options,
-      '#description' => t("UUIDs will be created for the vocabulary and its terms."),
-      '#required' => FALSE,
-    );
-  }
-  else {
-    $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
-      '#type' => 'item',
-      '#value' => t('There is currently no vocabulary defined.'),
-    );
+    if ($options = array_map(create_function('$voc', 'return $voc->name;'), taxonomy_get_vocabularies())) {
+      $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
+        '#type' => 'checkboxes',
+        '#title' => t('Automatic UUID generation for taxonomy'),
+        '#default_value' => variable_get('uuid_automatic_for_taxonomy', array()),
+        '#options' => $options,
+        '#description' => t("UUIDs will be created for the vocabulary and its terms."),
+        '#required' => FALSE,
+      );
+    }
+    else {
+      $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
+        '#type' => 'item',
+        '#value' => t('There is currently no vocabulary defined.'),
+      );
+    }
   }
 
   $form['settings'] = array(
