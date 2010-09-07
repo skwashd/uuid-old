@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.11 2010/07/28 18:06:30 recidive Exp $
+// $Id: uuid.module,v 1.1.2.12 2010/09/07 23:33:50 recidive Exp $
 
 /**
  * @file
@@ -57,7 +57,7 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
       }
       break;
     case 'update':
-      if ($node->revision) {
+      if (isset($node->revision)) {
         if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
           db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
         }
