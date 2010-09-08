@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.admin.inc,v 1.1.2.7 2010/07/28 18:10:55 recidive Exp $
+// $Id: uuid.admin.inc,v 1.1.2.8 2010/09/08 16:07:14 recidive Exp $
 
 /**
  * @file
@@ -65,6 +65,21 @@ function uuid_admin() {
     }
   }
 
+  $form['comment'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Comment settings'),
+  );
+  $form['comment']['uuid_automatic_for_comments'] = array(
+    '#type' => 'radios',
+    '#title' => t('Automatic UUID generation for comments'),
+    '#default_value' => variable_get('uuid_automatic_for_comments', FALSE),
+    '#options' => array(
+      TRUE => t('Enabled'),
+      FALSE => t('Disabled'),
+    ),
+    '#description' => t('Should UUIDs be created automatically for comments?'),
+  );
+
   $form['settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Synchronization'),
@@ -88,6 +103,14 @@ function uuid_sync() {
     $result = db_query("SELECT uid FROM {users} WHERE uid NOT IN (SELECT uid FROM {uuid_users})");
     while($item = db_fetch_object($result)) {
       db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES(%d, '%s')", $item->uid, uuid_uuid());
+    }
+  }
+
+  // Comments.
+  if (variable_get('uuid_automatic_for_comments', FALSE)) {
+    $result = db_query("SELECT cid FROM {comments} WHERE cid NOT IN (SELECT cid FROM {uuid_comments})");
+    while($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_comments} (cid, uuid) VALUES(%d, '%s')", $item->cid, uuid_uuid());
     }
   }
 

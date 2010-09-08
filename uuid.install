@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1.2.8 2010/04/02 02:20:38 recidive Exp $
+// $Id: uuid.install,v 1.1.2.9 2010/09/08 16:07:14 recidive Exp $
 
 /**
  * @file
@@ -32,6 +32,7 @@ function uuid_schema() {
     'uuid_users' => uuid_table_schema('users', 'uid'),
     'uuid_vocabulary' => uuid_table_schema('vocabulary', 'vid'),
     'uuid_term_data' => uuid_table_schema('term_data', 'tid'),
+    'uuid_comments' => uuid_table_schema('comments', 'cid'),
   );
 }
 
@@ -76,6 +77,7 @@ function uuid_uninstall() {
   variable_del('uuid_automatic_for_nodes');
   variable_del('uuid_automatic_for_users');
   variable_del('uuid_automatic_for_taxonomy');
+  variable_del('uuid_automatic_for_comments');
 
   // Remove tables.
   drupal_uninstall_schema('uuid');
@@ -104,6 +106,17 @@ function uuid_update_6002() {
     db_drop_index($ret, $table, $table . '_uuid_idx');
     db_add_unique_key($ret, $table, $table . '_uuid_key', array('uuid'));
   }
+
+  return $ret;
+}
+
+/**
+ * Create uuid_comment table.
+ */
+function uuid_update_6003() {
+  $ret = array();
+
+  db_create_table($ret, 'uuid_comments', uuid_table_schema('comments', 'cid'));
 
   return $ret;
 }
