@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.13 2010/09/08 16:07:14 recidive Exp $
+// $Id: uuid.module,v 1.1.2.14 2010/09/21 14:40:40 recidive Exp $
 
 /**
  * @file
@@ -33,9 +33,11 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
 
   switch ($op) {
     case 'load':
+      $revision_uuid = db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid));
       return array(
         'uuid' => db_result(db_query('SELECT uuid FROM {uuid_node} WHERE nid = %d', $node->nid)),
-        'revision_uuid' => db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid))
+        'revision_uuid' => $revision_uuid,
+        'loaded_revision_uuid' => $revision_uuid,
       );
     case 'insert':
       // Handle the case where automatic UUID generation is turned OFF but a
@@ -58,7 +60,7 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
       break;
     case 'update':
       if (isset($node->revision)) {
-        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
+        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid) && $node->revision_uuid != $node->loaded_revision_uuid) {
           db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
         }
         else {
