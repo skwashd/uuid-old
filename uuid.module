@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.14 2010/09/21 14:40:40 recidive Exp $
+// $Id: uuid.module,v 1.1.2.15 2010/09/24 05:08:07 recidive Exp $
 
 /**
  * @file
@@ -54,8 +54,10 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
         }
       }
       else if (in_array($node->type, $automatic_types)) {
-        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, uuid_uuid());
-        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
+        $node->uuid = uuid_uuid();
+        $node->revision_uuid = uuid_uuid();
+        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
+        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
       }
       break;
     case 'update':
@@ -64,7 +66,8 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
           db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
         }
         else {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
+          $node->revision_uuid = uuid_uuid();
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
         }
       }
       break;
@@ -137,7 +140,8 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
         db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
       }
       else if (variable_get('uuid_automatic_for_users', FALSE)) {
-        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, uuid_uuid());
+        $user->uuid = uuid_uuid();
+        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
       }
       break;
     case 'update':
