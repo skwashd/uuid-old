@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.install,v 1.1.2.9 2010/09/08 16:07:14 recidive Exp $
+// $Id: uuid.install,v 1.1.2.10 2010/09/30 20:58:01 recidive Exp $
 
 /**
  * @file
@@ -56,8 +56,8 @@ function uuid_table_schema($table, $key = 'key') {
         'description' => 'The primary key of the record which this UUID was generated for.',
       ),
       'uuid' => array(
-        'type' => 'varchar',
-        'length' => 64,
+        'type' => 'char',
+        'length' => 36,
         'not null' => TRUE,
         'default' => '',
         'description' => 'The Universally Unique Identifier.',
@@ -117,6 +117,26 @@ function uuid_update_6003() {
   $ret = array();
 
   db_create_table($ret, 'uuid_comments', uuid_table_schema('comments', 'cid'));
+
+  return $ret;
+}
+
+/**
+ * Fix the column definitions for uuid columns in all tables
+ * to use the more efficient char spec.
+ */
+function uuid_update_6004() {
+  $ret = array();
+
+  // Use what's in uuid_table_schema in order to be consistent.
+  $tables = uuid_schema();
+  $spec = $tables['uuid_node']['fields']['uuid'];
+
+  foreach ($tables as $tablename => $schema) {
+    if (db_table_exists($tablename)) {
+      db_change_field($ret, $tablename, 'uuid', 'uuid', $spec);
+    }
+  }
 
   return $ret;
 }
