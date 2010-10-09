@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.15 2010/09/24 05:08:07 recidive Exp $
+// $Id: uuid.module,v 1.1.2.16 2010/10/09 01:43:23 recidive Exp $
 
 /**
  * @file
@@ -47,32 +47,36 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
         db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
 
         if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
         else {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
+          // Attach new revision uuid to node, don't just insert it.
+          $node->revision_uuid = uuid_uuid();
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
       }
-      else if (in_array($node->type, $automatic_types)) {
+      elseif (in_array($node->type, $automatic_types)) {
         $node->uuid = uuid_uuid();
         $node->revision_uuid = uuid_uuid();
         db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
-        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
       }
       break;
     case 'update':
       if (isset($node->revision)) {
         if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid) && $node->revision_uuid != $node->loaded_revision_uuid) {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
         else {
           $node->revision_uuid = uuid_uuid();
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
       }
       break;
     case 'delete':
       db_query('DELETE FROM {uuid_node} WHERE nid = %d', $node->nid);
+      // Delete the revision uuids for the node.
+      db_query('DELETE FROM {uuid_node_revisions} WHERE nid = %d', $node->nid);
       break;
     case 'delete revision':
       db_query('DELETE FROM {uuid_node_revisions} WHERE vid = %d', $node->vid);
@@ -106,6 +110,9 @@ function node_get_by_uuid($uuid) {
 
 /**
  * Returns the node associated with a revision UUID.
+ *
+ * @param $revision_uuid
+ *   The uuid to use for the node lookup.
  *
  * @return
  *   Either the $node object, or FALSE on failure.
@@ -190,7 +197,7 @@ function uuid_taxonomy($op, $type, $array = NULL) {
       'field' => 'vid',
     ),
   );
-  
+
   if (array_key_exists($type, $types) && in_array($array['vid'], variable_get('uuid_automatic_for_taxonomy', array()))) {
     $field = $types[$type]['field'];
     switch ($op) {
@@ -223,7 +230,7 @@ function uuid_comment(&$a1, $op) {
         db_query("INSERT INTO {uuid_comments} (cid, uuid) VALUES (%d, '%s')", $a1['cid'], uuid_uuid());
       }
       break;
-      
+
     case 'update':
       if (isset($a1['uuid']) && uuid_is_valid($a1['uuid'])) {
         $exists = db_result(db_query('SELECT 1 FROM {uuid_comments} WHERE cid = %d', $a1['cid']));
