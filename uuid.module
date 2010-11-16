@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.1.2.16 2010/10/09 01:43:23 recidive Exp $
+// $Id: uuid.module,v 1.1.2.17 2010/11/16 02:57:59 recidive Exp $
 
 /**
  * @file
@@ -291,4 +291,63 @@ function uuid_uuid() {
     // 8 bits for "clk_seq_low" 48 bits for "node".
     mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(0, 65535)
   );
+}
+
+/**
+ * Token integration. UUID module provides the following tokens to be used on
+ * the node, user, comment and taxonomy contexts.
+ *   - Global:
+ *     - uuid: an arbitrary uuid generated on demand not linked with any object.
+ *   - Node:
+ *     - uuid: the node's uuid.
+ *     - revision-uuid: the node revision's uuid
+ *     - author-uuid: the node author's uuid
+ *   - User:
+ *     - uuid: the user's uuid.
+ *
+ * @todo Still to complete taxonomy and comment tokens.
+ */
+
+/**
+ * Implementation of hook_token_values().
+ */
+function uuid_token_values($type, $object = NULL, $options = array()) {
+  $tokens = array();
+
+  switch ($type) {
+    case 'global':
+      $tokens['uuid'] = uuid_uuid();
+      break;
+    case 'user':
+      $tokens['uuid'] = isset($object->uuid) ? $object->uuid : NULL;
+      break;
+    case 'node':
+      $tokens['uuid'] = isset($object->uuid) ? $object->uuid : NULL;
+      $tokens['revision-uuid'] = isset($object->revision_uuid) ? $object->revision_uuid : NULL;
+      $tokens['author-uuid'] = db_result(db_query("SELECT uuid FROM {uuid_users} WHERE uid = %d", $object->uid));
+      break;
+  }
+
+  return $tokens;
+}
+
+/**
+ * Implementation of hook_token_list().
+ */
+function uuid_token_list($type = 'all') {
+  $tokens = array();
+
+  if ($type == 'global' || $type == 'all') {
+    $tokens['global']['uuid'] = t("An arbitrary UUID value");
+  }
+  if ($type == 'node' || $type == 'all') {
+    $tokens['node']['uuid'] = t("The node UUID value");
+    $tokens['node']['revision_uuid'] = t("The node revision UUID value");
+    $tokens['node']['author-uuid'] = t("The node author UUID value");
+  }
+  if ($type == 'user' || $type == 'all') {
+    $tokens['user']['uuid'] = t("The user UUID value");
+  }
+
+  return $tokens;
 }
