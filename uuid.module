@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.module,v 1.4 2010/06/11 04:06:52 recidive Exp $
+// $Id: uuid.module,v 1.1.2.17 2010/11/16 02:57:59 recidive Exp $
 
 /**
  * @file
@@ -33,9 +33,11 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
 
   switch ($op) {
     case 'load':
+      $revision_uuid = db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid));
       return array(
         'uuid' => db_result(db_query('SELECT uuid FROM {uuid_node} WHERE nid = %d', $node->nid)),
-        'revision_uuid' => db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid))
+        'revision_uuid' => $revision_uuid,
+        'loaded_revision_uuid' => $revision_uuid,
       );
     case 'insert':
       // Handle the case where automatic UUID generation is turned OFF but a
@@ -45,29 +47,36 @@ function uuid_nodeapi(&$node, $op, $teaser, $page) {
         db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
 
         if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
         else {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
+          // Attach new revision uuid to node, don't just insert it.
+          $node->revision_uuid = uuid_uuid();
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
       }
-      else if (in_array($node->type, $automatic_types)) {
-        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, uuid_uuid());
-        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
+      elseif (in_array($node->type, $automatic_types)) {
+        $node->uuid = uuid_uuid();
+        $node->revision_uuid = uuid_uuid();
+        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
+        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
       }
       break;
     case 'update':
-      if ($node->revision) {
-        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, $node->revision_uuid);
+      if (isset($node->revision)) {
+        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid) && $node->revision_uuid != $node->loaded_revision_uuid) {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
         else {
-          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES (%d, '%s')", $node->vid, uuid_uuid());
+          $node->revision_uuid = uuid_uuid();
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
         }
       }
       break;
     case 'delete':
       db_query('DELETE FROM {uuid_node} WHERE nid = %d', $node->nid);
+      // Delete the revision uuids for the node.
+      db_query('DELETE FROM {uuid_node_revisions} WHERE nid = %d', $node->nid);
       break;
     case 'delete revision':
       db_query('DELETE FROM {uuid_node_revisions} WHERE vid = %d', $node->vid);
@@ -102,6 +111,9 @@ function node_get_by_uuid($uuid) {
 /**
  * Returns the node associated with a revision UUID.
  *
+ * @param $revision_uuid
+ *   The uuid to use for the node lookup.
+ *
  * @return
  *   Either the $node object, or FALSE on failure.
  */
@@ -135,7 +147,8 @@ function uuid_user($op, &$edit, &$user, $category = NULL) {
         db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
       }
       else if (variable_get('uuid_automatic_for_users', FALSE)) {
-        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, uuid_uuid());
+        $user->uuid = uuid_uuid();
+        db_query("INSERT INTO {uuid_users} (uid, uuid) VALUES (%d, '%s')", $user->uid, $user->uuid);
       }
       break;
     case 'update':
@@ -189,13 +202,49 @@ function uuid_taxonomy($op, $type, $array = NULL) {
     $field = $types[$type]['field'];
     switch ($op) {
       case 'insert':
+        if (empty($array['uuid']) || !uuid_is_valid($array['uuid'])) {
+          $array['uuid'] = uuid_uuid();
+        }
         db_query("INSERT INTO {" . $types[$type]['table'] . "} ($field, uuid) VALUES (%d, '%s')",
-          $array[$types[$type]['field']], uuid_uuid());
+          $array[$types[$type]['field']], $array['uuid']);
         break;
       case 'delete':
         db_query("DELETE FROM {". $types[$type]['table'] ."} WHERE $field = %d", $array[$types[$type]['field']]);
         break;
     }
+  }
+}
+
+/**
+ * Implementation of hook_comment().
+ */
+function uuid_comment(&$a1, $op) {
+  switch ($op) {
+    // Make sure that a new entry gets made in the comments_uuid table when new content
+    // is added.
+    case 'insert':
+      if (!empty($a1['uuid']) && uuid_is_valid($a1['uuid'])) {
+        db_query("INSERT INTO {uuid_comments} (cid, uuid) VALUES (%d, '%s')", $a1['cid'], $a1['uuid']);
+      }
+      else if (variable_get('uuid_automatic_for_comments', FALSE)) {
+        db_query("INSERT INTO {uuid_comments} (cid, uuid) VALUES (%d, '%s')", $a1['cid'], uuid_uuid());
+      }
+      break;
+
+    case 'update':
+      if (isset($a1['uuid']) && uuid_is_valid($a1['uuid'])) {
+        $exists = db_result(db_query('SELECT 1 FROM {uuid_comments} WHERE cid = %d', $a1['cid']));
+
+        if (!$exists && variable_get('uuid_automatic_for_comments', FALSE)) {
+          db_query("INSERT INTO {uuid_comments} (cid, uuid) VALUES (%d, '%s')", $a1['cid'], uuid_uuid());
+        }
+      }
+      break;
+
+    // Clean up comments_uuid table when content is deleted.
+    case 'delete':
+      db_query("DELETE FROM {uuid_comments} WHERE cid = %d", $a1->cid);
+      break;
   }
 }
 
@@ -242,4 +291,63 @@ function uuid_uuid() {
     // 8 bits for "clk_seq_low" 48 bits for "node".
     mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(0, 65535)
   );
+}
+
+/**
+ * Token integration. UUID module provides the following tokens to be used on
+ * the node, user, comment and taxonomy contexts.
+ *   - Global:
+ *     - uuid: an arbitrary uuid generated on demand not linked with any object.
+ *   - Node:
+ *     - uuid: the node's uuid.
+ *     - revision-uuid: the node revision's uuid
+ *     - author-uuid: the node author's uuid
+ *   - User:
+ *     - uuid: the user's uuid.
+ *
+ * @todo Still to complete taxonomy and comment tokens.
+ */
+
+/**
+ * Implementation of hook_token_values().
+ */
+function uuid_token_values($type, $object = NULL, $options = array()) {
+  $tokens = array();
+
+  switch ($type) {
+    case 'global':
+      $tokens['uuid'] = uuid_uuid();
+      break;
+    case 'user':
+      $tokens['uuid'] = isset($object->uuid) ? $object->uuid : NULL;
+      break;
+    case 'node':
+      $tokens['uuid'] = isset($object->uuid) ? $object->uuid : NULL;
+      $tokens['revision-uuid'] = isset($object->revision_uuid) ? $object->revision_uuid : NULL;
+      $tokens['author-uuid'] = db_result(db_query("SELECT uuid FROM {uuid_users} WHERE uid = %d", $object->uid));
+      break;
+  }
+
+  return $tokens;
+}
+
+/**
+ * Implementation of hook_token_list().
+ */
+function uuid_token_list($type = 'all') {
+  $tokens = array();
+
+  if ($type == 'global' || $type == 'all') {
+    $tokens['global']['uuid'] = t("An arbitrary UUID value");
+  }
+  if ($type == 'node' || $type == 'all') {
+    $tokens['node']['uuid'] = t("The node UUID value");
+    $tokens['node']['revision_uuid'] = t("The node revision UUID value");
+    $tokens['node']['author-uuid'] = t("The node author UUID value");
+  }
+  if ($type == 'user' || $type == 'all') {
+    $tokens['user']['uuid'] = t("The user UUID value");
+  }
+
+  return $tokens;
 }

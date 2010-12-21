@@ -1,5 +1,5 @@
 <?php
-// $Id: uuid.admin.inc,v 1.4 2010/06/11 04:06:52 recidive Exp $
+// $Id: uuid.admin.inc,v 1.1.2.9 2010/10/09 01:43:23 recidive Exp $
 
 /**
  * @file
@@ -41,27 +41,44 @@ function uuid_admin() {
     '#description' => t('Should UUIDs be created automatically for users?'),
   );
 
-  $form['taxonomy'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Taxonomy settings'),
-  );
+  if (module_exists('taxonomy')) {
+    $form['taxonomy'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Taxonomy settings'),
+    );
 
-  if ($options = array_map(create_function('$voc', 'return $voc->name;'), taxonomy_get_vocabularies())) {
-    $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t('Automatic UUID generation for taxonomy'),
-      '#default_value' => variable_get('uuid_automatic_for_taxonomy', array()),
-      '#options' => $options,
-      '#description' => t("UUIDs will be created for the vocabulary and its terms."),
-      '#required' => FALSE,
-    );
+    if ($options = array_map(create_function('$voc', 'return $voc->name;'), taxonomy_get_vocabularies())) {
+      $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
+        '#type' => 'checkboxes',
+        '#title' => t('Automatic UUID generation for taxonomy'),
+        '#default_value' => variable_get('uuid_automatic_for_taxonomy', array()),
+        '#options' => $options,
+        '#description' => t("UUIDs will be created for the vocabulary and its terms."),
+        '#required' => FALSE,
+      );
+    }
+    else {
+      $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
+        '#type' => 'item',
+        '#value' => t('There is currently no vocabulary defined.'),
+      );
+    }
   }
-  else {
-    $form['taxonomy']['uuid_automatic_for_taxonomy'] = array(
-      '#type' => 'item',
-      '#value' => t('There is currently no vocabulary defined.'),
-    );
-  }
+
+  $form['comment'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Comment settings'),
+  );
+  $form['comment']['uuid_automatic_for_comments'] = array(
+    '#type' => 'radios',
+    '#title' => t('Automatic UUID generation for comments'),
+    '#default_value' => variable_get('uuid_automatic_for_comments', FALSE),
+    '#options' => array(
+      TRUE => t('Enabled'),
+      FALSE => t('Disabled'),
+    ),
+    '#description' => t('Should UUIDs be created automatically for comments?'),
+  );
 
   $form['settings'] = array(
     '#type' => 'fieldset',
@@ -89,6 +106,14 @@ function uuid_sync() {
     }
   }
 
+  // Comments.
+  if (variable_get('uuid_automatic_for_comments', FALSE)) {
+    $result = db_query("SELECT cid FROM {comments} WHERE cid NOT IN (SELECT cid FROM {uuid_comments})");
+    while($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_comments} (cid, uuid) VALUES(%d, '%s')", $item->cid, uuid_uuid());
+    }
+  }
+
   $types = variable_get('uuid_automatic_for_nodes', array());
 
   // Remove disabled node types.
@@ -103,9 +128,9 @@ function uuid_sync() {
     }
 
     // Revisions.
-    $result = db_query("SELECT nr.vid AS vid FROM {node_revisions} AS nr INNER JOIN {node} n ON nr.nid = n.nid WHERE n.type IN (" . $placeholders . ") AND nr.vid NOT IN (SELECT vid FROM {uuid_node_revisions})", $types);
+    $result = db_query("SELECT nr.vid AS vid, nr.nid AS nid FROM {node_revisions} AS nr INNER JOIN {node} n ON nr.nid = n.nid WHERE n.type IN (" . $placeholders . ") AND nr.vid NOT IN (SELECT vid FROM {uuid_node_revisions})", $types);
     while ($item = db_fetch_object($result)) {
-      db_query("INSERT INTO {uuid_node_revisions} (vid, uuid) VALUES(%d, '%s')", $item->vid, uuid_uuid());
+      db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES(%d, '%s', %d)", $item->vid, uuid_uuid(), $item->nid);
     }
   }
 
