@@ -1,0 +1,160 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Main module functions for the uuid_node module.
+ */
+
+module_load_include('inc', 'uuid', 'uuid.common');
+
+/**
+ * Implementation of hook_menu().
+ */
+function uuid_node_menu() {
+  $items = array();
+
+  $items['admin/settings/uuid-node'] = array(
+    'title' => 'Universally Unique IDentifier for nodes',
+    'description' => 'Configure automatically UUID generation for nodes settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uuid_admin'),
+    'access arguments' => array('administer content types'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'uuid.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function uuid_node_nodeapi(&$node, $op, $teaser, $page) {
+  $automatic_types = variable_get('uuid_automatic_for_nodes', array());
+
+  switch ($op) {
+    case 'load':
+      $revision_uuid = db_result(db_query('SELECT uuid FROM {uuid_node_revisions} WHERE vid = %d', $node->vid));
+      return array(
+        'uuid' => db_result(db_query('SELECT uuid FROM {uuid_node} WHERE nid = %d', $node->nid)),
+        'revision_uuid' => $revision_uuid,
+        'loaded_revision_uuid' => $revision_uuid,
+      );
+    case 'insert':
+      // Handle the case where automatic UUID generation is turned OFF but a
+      // node is created, node_save(), intentionally with the $node->uuid
+      // attribute.
+      if (isset($node->uuid) && uuid_is_valid($node->uuid)) {
+        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
+
+        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid)) {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
+        }
+        else {
+          // Attach new revision uuid to node, don't just insert it.
+          $node->revision_uuid = uuid_uuid();
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
+        }
+      }
+      elseif (in_array($node->type, $automatic_types)) {
+        $node->uuid = uuid_uuid();
+        $node->revision_uuid = uuid_uuid();
+        db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES (%d, '%s')", $node->nid, $node->uuid);
+        db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
+      }
+      break;
+    case 'update':
+      if (isset($node->revision)) {
+        if (isset($node->revision_uuid) && uuid_is_valid($node->revision_uuid) && $node->revision_uuid != $node->loaded_revision_uuid) {
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
+        }
+        else {
+          $node->revision_uuid = uuid_uuid();
+          db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES (%d, '%s', %d)", $node->vid, $node->revision_uuid, $node->nid);
+        }
+      }
+      break;
+    case 'delete':
+      db_query('DELETE FROM {uuid_node} WHERE nid = %d', $node->nid);
+      // Delete the revision uuids for the node.
+      db_query('DELETE FROM {uuid_node_revisions} WHERE nid = %d', $node->nid);
+      break;
+    case 'delete revision':
+      db_query('DELETE FROM {uuid_node_revisions} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * Returns the node associated with a UUID. Uses db_rewrite_sql() to ensure
+ * node_access rules are preserved.
+ *
+ * @return
+ *   Either the $node object, or FALSE on failure.
+ */
+function node_get_by_uuid($uuid) {
+  $nid = db_result(db_query(db_rewrite_sql(
+    "SELECT n.nid
+     FROM {node} AS n
+     INNER JOIN {uuid_node} AS un ON n.nid = un.nid
+     WHERE un.uuid = '%s'"),
+    $uuid
+  ));
+
+  if ($nid) {
+    return node_load($nid);
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Returns the node associated with a revision UUID.
+ *
+ * @param $revision_uuid
+ *   The uuid to use for the node lookup.
+ *
+ * @return
+ *   Either the $node object, or FALSE on failure.
+ */
+function node_get_by_revision_uuid($revision_uuid) {
+  $node = db_fetch_object(db_query(db_rewrite_sql(
+    "SELECT n.nid, n.vid
+     FROM {node} AS n
+     INNER JOIN {uuid_node_revisions} AS unr ON n.vid = unr.vid
+     WHERE unr.uuid = '%s'"),
+    $revision_uuid
+  ));
+
+  if ($node->nid && $node->vid) {
+    return node_load($node->nid, $node->vid);
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Implementation of hook_uuid_sync().
+ */
+function uuid_node_uuid_sync() {
+  // Remove disabled node types.
+  $types = array_filter($types);
+  if (!empty($types)) {
+    $placeholders = db_placeholders($types, 'varchar');
+
+    // Nodes.
+    $result = db_query("SELECT nid FROM {node} WHERE type IN (" . $placeholders . ") AND nid NOT IN (SELECT nid FROM {uuid_node})", $types);
+    while ($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_node} (nid, uuid) VALUES(%d, '%s')", $item->nid, uuid_uuid());
+    }
+
+    // Revisions.
+    $result = db_query("SELECT nr.vid AS vid, nr.nid AS nid FROM {node_revisions} AS nr INNER JOIN {node} n ON nr.nid = n.nid WHERE n.type IN (" . $placeholders . ") AND nr.vid NOT IN (SELECT vid FROM {uuid_node_revisions})", $types);
+    while ($item = db_fetch_object($result)) {
+      db_query("INSERT INTO {uuid_node_revisions} (vid, uuid, nid) VALUES(%d, '%s', %d)", $item->vid, uuid_uuid(), $item->nid);
+    }
+  }
+}

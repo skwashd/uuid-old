@@ -1,0 +1,48 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Install, update and uninstall functions for the uuid_taxonomy module.
+ */
+
+/**
+ * Implementation of hook_enable().
+ */
+function uuid_node_enable() {
+  module_load_include('inc', 'uuid', 'uuid.admin');
+  uuid_sync();
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function uuid_taxonomy_install() {
+  // Create tables.
+  drupal_install_schema('uuid_taxonomy');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function uuid_taxonomy_schema() {
+  module_load_include('inc', 'uuid', 'uuid.common');
+  $schema = array(
+    'uuid_vocabulary' => uuid_table_schema('vocabulary', 'vid'),
+    'uuid_term_data' => uuid_table_schema('term_data', 'tid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uuid_taxonomy_uninstall() {
+  variable_del('uuid_automatic_for_taxonomy');
+
+  // Remove tables.
+  drupal_uninstall_schema('uuid_taxonomy');
+}
+
+

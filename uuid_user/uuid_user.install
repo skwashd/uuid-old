@@ -1,0 +1,47 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Install, update and uninstall functions for the uuid_user module.
+ */
+
+/**
+ * Implementation of hook_enable().
+ */
+function uuid_user_enable() {
+  module_load_include('inc', 'uuid', 'uuid.admin');
+  uuid_sync();
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function uuid_user_install() {
+  // Create tables.
+  drupal_install_schema('uuid_user');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function uuid_user_schema() {
+  module_load_include('inc', 'uuid', 'uuid.common');
+  $schema = array(
+    'uuid_users' => uuid_table_schema('users', 'uid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uuid_user_uninstall() {
+  variable_del('uuid_automatic_for_users');
+
+  // Remove tables.
+  drupal_uninstall_schema('uuid_user');
+}
+
+

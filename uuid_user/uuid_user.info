@@ -1,0 +1,6 @@
+; $Id$
+name = "UUID User"
+description = "Generate Universally Unique IDentifier (UUID) for users."
+core = 7.x
+
+dependencies[] = uuid

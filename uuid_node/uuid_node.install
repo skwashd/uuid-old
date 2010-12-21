@@ -1,0 +1,59 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Install, update and uninstall functions for the uuid_node module.
+ */
+
+/**
+ * Implementation of hook_enable().
+ */
+function uuid_node_enable() {
+  module_load_include('inc', 'uuid', 'uuid.admin');
+  uuid_sync();
+}
+
+/**
+ * Implementation of hook_node_install().
+ */
+function uuid_install() {
+  // Create tables.
+  drupal_install_schema('uuid_node');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function uuid_node_schema() {
+  module_load_include('inc', 'uuid', 'uuid.common');
+  $schema = array(
+    'uuid_node' => uuid_table_schema('node', 'nid'),
+    'uuid_node_revisions' => uuid_table_schema('node_revisions', 'vid'),
+  );
+  // The uuid_node_revisions table requires an additional column (node id) to
+  // support revision deletion upon node delete. No index is needed on this
+  // column as it will only be used during a node delete.
+  $schema['uuid_node_revisions']['fields']['nid'] = array(
+    'type' => 'int',
+    'length' => 10,
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+    'description' => 'The revision\'s node id. Needed for delete node operations.',
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uuid_node_uninstall() {
+  variable_del('uuid_automatic_for_nodes');
+
+  // Remove tables.
+  drupal_uninstall_schema('uuid_node');
+}
+
+
