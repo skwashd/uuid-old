@@ -1,6 +1,0 @@
-; $Id$
-name = "UUID Node"
-description = "Generate Universally Unique IDentifier (UUID) for nodes."
-core = 7.x
-
-dependencies[] = uuid

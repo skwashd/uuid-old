@@ -1,6 +1,0 @@
-; $Id$
-name = "UUID Comment"
-description = "Generate Universally Unique IDentifier (UUID) for comments."
-core = 7.x
-
-dependencies[] = uuid
