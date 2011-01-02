@@ -66,7 +66,7 @@ function uuid_field_is_empty($item, $field) {
 function uuid_field_attach_presave($entity_type, $entity) {
 
   // We only update the UUID if it is a new revision.
-  if (!isset($entity->revision) && $entity->revision === 1) {
+  if (isset($entity->revision) && $entity->revision === 1) {
     $new_uuid = uuid_uuid();
     $entity->uuid['und'][0]['uuid'] = $new_uuid;
   }
