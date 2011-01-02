@@ -9,7 +9,7 @@
 // Generic Hooks
 
 /**
- * Implementation of hook_menu().
+ * Implements of hook_menu().
  */
 function uuid_menu() {
   $items = array();
@@ -28,13 +28,14 @@ function uuid_menu() {
 }
 
 /**
- * Implementation of hook_permissions().
+ * Implements of hook_permissions().
  */
 function uuid_permissions() {
   return array('administer uuid');
 }
 
 // Field Hooks
+
 /**
  * Implements hook_field_info().
  */
@@ -72,10 +73,13 @@ function uuid_field_attach_presave($entity_type, $entity) {
   }
 }
 
+// Fields helper functions.
+
 /**
- * Get a list of fieldable entities.
+ * Gets a list of fieldable entities.
  *
- * @returns Array List of fieldable entities.
+ * @return
+ *   List of fieldable entities.
  */
 function uuid_list_fieldable_entities() {
   $entities = entity_get_info();
@@ -105,15 +109,16 @@ function uuid_list_fieldable_entities() {
   return $entity_info;
 }
 
-// Fields helper functions.
-
 /**
- * Enable the field for a bundle.
+ * Enables the UUID field for a bundle.
  *
- * @param String $entity The entity the bundle belongs to.
- * @param String $bundle The bundle to enable the field for.
+ * @param
+ *   $entity The entity the bundle belongs to.
+ * @param
+ *   $bundle The bundle to enable the field for.
  *
- * @returns bool Was the field enabled?
+ * @return
+ *   Was the field enabled?
  */
 function uuid_enable_field($entity, $bundle) {
 
@@ -147,12 +152,15 @@ function uuid_enable_field($entity, $bundle) {
 }
 
 /**
- * Disable a field in a bundle, but don't delete it.
+ * Disables the UUID field in a bundle, but don't delete it.
  *
- * @param String $entity The entity the bundle belongs to.
- * @param String $bundle The bundle to enable the field for.
+ * @param 
+ *   $entity The entity the bundle belongs to.
+ * @param
+ *   $bundle The bundle to enable the field for.
  *
- * @returns bool Was the field disabled?
+ * @return 
+ *   Was the field disabled?
  */
 function uuid_disable_field($entity, $bundle) {
   //field_delete_instance(_uuid_create_instance_array($entity, $bundle)) ?
@@ -160,12 +168,15 @@ function uuid_disable_field($entity, $bundle) {
 }
 
 /**
- * Generate the field instance array.
+ * Generates the field instance array.
  *
- * @param String $entity The name of the entity to add the field to.
- * @param String $bundle The name of the bundle to add the field to.
+ * @param $entity
+ *   The name of the entity to add the field to.
+ * @param $bundle
+ *  The name of the bundle to add the field to.
  *
- * @return Array The field instance configuration.
+ * @return
+ *   The field instance configuration.
  */
 function _uuid_create_instance_array($entity, $bundle) {
   $instance = array(
@@ -184,7 +195,9 @@ function _uuid_create_instance_array($entity, $bundle) {
 }
 
 /**
- * Field default value callback.
+ * Generates the default value.
+ *
+ * This is invoked as a callback by field_get_default_value().
  */
 function uuid_default_value($entity_type, $entity, $field, $instance, $langcode) {
   return array(array('value' => uuid_uuid()));
@@ -193,7 +206,7 @@ function uuid_default_value($entity_type, $entity, $field, $instance, $langcode)
 // UUID generation handling
 
 /**
- * Fetch information about the available UUID implementations.
+ * Fetches information about the available UUID implementations.
  */
 function uuid_info() {
   return module_invoke_all('uuid_info');
@@ -225,7 +238,7 @@ function uuid_uuid_info() {
 }
 
 /**
- * Fetch the PHP fallback generator config.
+ * Fetches the PHP fallback generator config.
  *
  * This is used to keep 
  */
@@ -237,7 +250,7 @@ function _uuid_uuid_php_info() {
 }
 
 /**
- * Generate an Universally Unique IDentifier (UUID).
+ * Generates an Universally Unique IDentifier (UUID).
  *
  * @return
  *   An UUID, made up of 32 hex digits and 4 hyphens.
@@ -265,9 +278,9 @@ function uuid_uuid() {
 }
 
 /**
- * Generate a UUID v4 using PHP code.
+ * Generates a UUID v4 using PHP code.
  *
- * Based on http://php.net/uniqid#65879
+ * See http://php.net/uniqid#65879
  */
 function uuid_php() {
   // The field names refer to RFC 4122 section 4.1.2.
@@ -287,14 +300,14 @@ function uuid_php() {
 }
 
 /**
- * Generate a UUID using MySQL's implementation.
+ * Generates a UUID using MySQL's implementation.
  */
 function uuid_mysql() {
   return db_query('SELECT UUID()')->fetchField();
 }
 
 /**
- * Generate a UUID using the PECL extension.
+ * Generates a UUID using the PECL extension.
  */
 function uuid_pecl() {
   return uuid_create(UUID_TYPE_DEFAULT);
@@ -302,10 +315,10 @@ function uuid_pecl() {
 
 
 /**
- * Ensure all content and users have UUIDs, if they are supposed to.
+ * Ensures all content and users have UUIDs, if they are supposed to.
  */
 function uuid_sync() {
-  //FIXME make this work
+  //FIXME make this work using the D7 queue system
   return;
 
   // Users.

@@ -107,22 +107,27 @@ function uuid_settings_form_submit($form, &$form_state) {
 }
 
 /**
- * Check if UUID should be enabled for specified entity bundle.
+ * Checks if UUID should be enabled for specified entity bundle.
  *
- * @param Array $values The form values.
- * @param String $entity The name of the entity to check.
- * @param String $bundle The name of the bundle to check.
+ * @param 
+ *   $values The form values.
+ * @param 
+ *   $entity The name of the entity to check.
+ * @param 
+ *   $bundle The name of the bundle to check.
  *
- * @return bool Should UUID be enabled?
+ * @return 
+ *   Should UUID be enabled?
  */
 function _uuid_request_enabled($values, $entity, $bundle) {
   return !empty($values["uuid_automatic_for_{$entity}"][$bundle]);
 }
 
 /**
- * Prepare a list of UUID generators for select #options in settings form.
+ * Prepares a list of UUID generators for select #options in settings form.
  *
- * @returns Array List of available UUID generators.
+ * @return 
+ *   List of available UUID generators.
  */
 function _uuid_admin_generators() {
   $options = array();
