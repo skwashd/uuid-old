@@ -43,13 +43,9 @@ function uuid_field_info() {
   return array(
     'uuid' => array(
       'label' => t('Universally Unique IDentifier'),
-      'description' => t('This field stores a Universally Unique IDentifier in the database'),
-      'settings' => array(),
-      'instance_settings' => array(),
+      'description' => t('Stores a Universally Unique IDentifier'),
       'default_widget' => 'hidden_value',
-      'default_formatter' => 'text_default',
-      'locked' => TRUE,
-      'no_ui' => TRUE,
+      'default_formatter' => 'hidden',
     ),
   );
 }
@@ -65,145 +61,34 @@ function uuid_field_is_empty($item, $field) {
  * Implements hook_field_attach_presave().
  */
 function uuid_field_attach_presave($entity_type, $entity) {
-
-  // We only update the UUID if it is a new revision.
-  if (isset($entity->revision) && $entity->revision === 1) {
-    $new_uuid = uuid_uuid();
-    $entity->uuid['und'][0]['uuid'] = $new_uuid;
+  // We only set the UUID for new records or new revisions
+  if (empty($entity->field_uuid[LANGUAGE_NONE][0])
+    || (isset($entity->revision) && $entity->revision === 1)) {
+    $entity->field_uuid[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
   }
 }
 
-// Fields helper functions.
-
 /**
- * Gets a list of fieldable entities.
- *
- * @return
- *   List of fieldable entities.
+ * Implements hook_field_widget_info_alter().
  */
-function uuid_list_fieldable_entities() {
-  $entities = entity_get_info();
-  $entity_info = array();
-  foreach ($entities as $name => $data) {
-
-    // we only care about fieldable entities
-    if (!$data['fieldable']) { 
-      continue;
-    }
-
-    $entity_info[$name] = array(
-      'label' => t($data['label']),
-      'bundles' => array()
-    );
-
-    foreach ($data['bundles'] as $bundle => $info) {
-      $label = $name;
-      if (!empty($info['label'])) {
-        $label = $info['label'];
-      }
-
-      $entity_info[$name]['bundles'][$bundle] = t($label);
-    }
-  }
-
-  return $entity_info;
+function uuid_field_widget_info_alter(&$info) {
+  $info['hidden_value']['field types'][] = 'uuid';
 }
 
-/**
- * Enables the UUID field for a bundle.
- *
- * @param
- *   $entity The entity the bundle belongs to.
- * @param
- *   $bundle The bundle to enable the field for.
- *
- * @return
- *   Was the field enabled?
- */
-function uuid_enable_field($entity, $bundle) {
-
-  $field_id = 'uuid';
-  $field = field_info_field($field_id);
-  $instance = field_info_instance($entity, $field_id, $bundle);
-
-  if (empty($field)) {
-    $field = array(
-      'field_name' => 'uuid', 
-      'type' => 'uuid', 
-      'translatable' => FALSE,
-    );
-    $field = field_create_field($field);
-  }
-
-  if (empty($instance)) {
-    $instance = _uuid_create_instance_array($entity, $bundle);
-
-    try {
-      return is_array(field_create_instance($instance));
-    }
-    catch (Exception $e) {
-      drupal_set_message(t('Field creation failed: @exception', array('@exception' => $e)));
-      return FALSE;
-    }
-  }
-
-  // we don't care if it already exists
-  return TRUE;
-}
+// Form Hacks
 
 /**
- * Disables the UUID field in a bundle, but don't delete it.
- *
- * @param 
- *   $entity The entity the bundle belongs to.
- * @param
- *   $bundle The bundle to enable the field for.
- *
- * @return 
- *   Was the field disabled?
+ * Implements hook_form_alter().
  */
-function uuid_disable_field($entity, $bundle) {
-  //field_delete_instance(_uuid_create_instance_array($entity, $bundle)) ?
-  return TRUE; // do nothing for now
-}
-
-/**
- * Generates the field instance array.
- *
- * @param $entity
- *   The name of the entity to add the field to.
- * @param $bundle
- *  The name of the bundle to add the field to.
- *
- * @return
- *   The field instance configuration.
- */
-function _uuid_create_instance_array($entity, $bundle) {
-  $instance = array(
-    'field_name' => 'uuid',
-    'entity_type' => $entity,
-    'bundle' => $bundle,
-    'required' => TRUE,
-    'default_value_function' => 'uuid_default_value',
-    'display' => array(
-      'default' => array('type' => 'hidden'),
-      'teaser' => array('type' => 'hidden')
-    ),
+function uuid_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
+  $form['field']['#type'] = 'value';
+  $form['field']['cardinality'] = array(
+    '#type' => 'value',
+    '#value' => 1,
   );
-
-  return $instance;
 }
 
-/**
- * Generates the default value.
- *
- * This is invoked as a callback by field_get_default_value().
- */
-function uuid_default_value($entity_type, $entity, $field, $instance, $langcode) {
-  return array(array('value' => uuid_uuid()));
-}
-
-// UUID generation handling
+// UUID generators
 
 /**
  * Fetches information about the available UUID implementations.
@@ -218,7 +103,14 @@ function uuid_info() {
 function uuid_uuid_info() {
   $sources = array();
 
-  if (function_exists('uuid_create')) {
+  // PECL and OSSP are 2 incompatiable implementations in PHP that use the same namespace.
+  if (function_exists('uuid_make')) {
+    $sources['ossp'] = array(
+      'callback' => 'uuid_ossp',
+      'title' => t('OSSP Extension'),
+    );
+  }
+  elseif (function_exists('uuid_create')) {
     $sources['pecl'] = array(
       'callback' => 'uuid_pecl',
       'title' => t('PECL Extension'),
@@ -229,6 +121,13 @@ function uuid_uuid_info() {
     $sources['mysql'] = array(
       'callback' => 'uuid_mysql',
       'title' => t('MySQL - SELECT UUID()'),
+    );
+  }
+
+  if (function_exists('com_create_guid')) {
+    $sources['com'] = array(
+      'callback' => 'uuid_com',
+      'title' => t('Windows COM'),
     );
   }
 
@@ -278,6 +177,49 @@ function uuid_uuid() {
 }
 
 /**
+ * Generates a UUID using the Windows internal GUID generator.
+ *
+ * See http://php.net/com_create_guid
+ */
+function uuid_com() {
+  return trim(com_create_guid(), '{}');
+}
+
+/**
+ * Generates a UUID using MySQL's implementation.
+ *
+ * See http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_uuid
+ */
+function uuid_mysql() {
+  return db_query('SELECT UUID()')->fetchField();
+}
+
+/**
+ * Generates a UUID using the (somewhat broken) OSSP PHP extension.
+ *
+ * See http://www.ossp.org/pkg/lib/uuid/
+ */
+function uuid_ossp() {
+  $v4 = null;
+  $out = '';
+
+  uuid_create(&$v4);
+  uuid_make($v4, UUID_MAKE_V4);
+  uuid_export($v4, UUID_FMT_STR, &$out);
+
+  return $out;
+}
+
+/**
+ * Generates a UUID using the PECL extension.
+ *
+ * See http://pecl.php.net/package/uuid
+ */
+function uuid_pecl() {
+  return uuid_create(UUID_TYPE_DEFAULT);
+}
+
+/**
  * Generates a UUID v4 using PHP code.
  *
  * See http://php.net/uniqid#65879
@@ -299,17 +241,4 @@ function uuid_php() {
   );
 }
 
-/**
- * Generates a UUID using MySQL's implementation.
- */
-function uuid_mysql() {
-  return db_query('SELECT UUID()')->fetchField();
-}
-
-/**
- * Generates a UUID using the PECL extension.
- */
-function uuid_pecl() {
-  return uuid_create(UUID_TYPE_DEFAULT);
-}
 

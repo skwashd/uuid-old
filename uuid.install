@@ -27,3 +27,10 @@ function uuid_field_schema($field) {
     'indexes' => $indexes,
   );
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+function uuid_uninstall() {
+  variable_del('uuid_generator');
+}
