@@ -200,7 +200,7 @@ function uuid_mysql() {
  * See http://www.ossp.org/pkg/lib/uuid/
  */
 function uuid_ossp() {
-  $v4 = null;
+  $v4 = NULL;
   $out = '';
 
   uuid_create(&$v4);
