@@ -1,0 +1,6 @@
+; $Id$
+name = "Universally Unique IDentifier (UUID) Synchronization"
+description = "Allows administrator to ensure all records in UUID enabled bundles have a UUID value."
+core = 7.x
+
+dependencies[] = uuid

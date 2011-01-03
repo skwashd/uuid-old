@@ -49,18 +49,6 @@ function uuid_admin() {
     );
   }
 
-  $form['synchronization'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Synchronization'),
-  );
-
-  $form['synchronization']['sync'] = array(
-    '#type' => 'submit',
-    '#value' => t('Create missing UUIDs'),
-    '#submit' => array('uuid_sync'),
-    '#weight' => 10,
-  );
-
   $form = system_settings_form($form);
 
   $form['#submit'][] = 'uuid_settings_form_submit';
