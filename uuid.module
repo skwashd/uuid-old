@@ -75,17 +75,45 @@ function uuid_field_widget_info_alter(&$info) {
   $info['hidden_value']['field types'][] = 'uuid';
 }
 
-// Form Hacks
+/**
+ * Implements hook_field_create_field().
+ *
+ * Ensures cardinality is always 1 and errors if it doesn't.
+ *
+ * @throws FieldException
+ */
+function uuid_field_create_field($field) {
+  // All is good if cardinality is one, so exit early
+  if (1 === $field['cardinality']) {
+    return;
+  }
+
+  field_delete_field($field['field_name']);
+
+  db_delete('field_config')
+    ->condition('id', $field['id'])
+    ->execute();
+
+  field_cache_clear(TRUE);
+
+  throw new FieldException(t("Cardinality for @type must always be 1.", array('@field_name' => $field['type'])));
+}
 
 /**
- * Implements hook_form_alter().
+ * Implements hook_field_update_field().
+ *
+ * Ensures cardinality is always 1.
+ *
+ * This is a hack around field_ui not catching FieldUpdateForbiddenException 
+ * from hook_field_update_forbid() implementors. See http://drupal.org/node/1014506
+ * 
  */
-function uuid_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
-  $form['field']['#type'] = 'value';
-  $form['field']['cardinality'] = array(
-    '#type' => 'value',
-    '#value' => 1,
-  );
+function uuid_field_update_field($field, $prior_field, $has_data) {
+  if (1 !== $field['cardinality']) {
+    $field['cardinality'] = 1;
+    field_update_field($field);
+    drupal_set_message(t("Cardinality for @field_name must always be 1.", array('@field_name' => $field['field_name'])), 'error');
+  }
 }
 
 // UUID generators
