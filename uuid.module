@@ -84,7 +84,7 @@ function uuid_field_widget_info_alter(&$info) {
  */
 function uuid_field_create_field($field) {
   // All is good if cardinality is one, so exit early
-  if (1 === $field['cardinality']) {
+  if ('uuid' == $field['type'] && 1 === $field['cardinality']) {
     return;
   }
 
@@ -114,6 +114,21 @@ function uuid_field_update_field($field, $prior_field, $has_data) {
     field_update_field($field);
     drupal_set_message(t("Cardinality for @field_name must always be 1.", array('@field_name' => $field['field_name'])), 'error');
   }
+}
+
+// Form Hacks
+
+/**
+ * Implements hook_form_alter().
+ *
+ * This improves UX by hiding the forced value.
+ */
+function uuid_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
+  $form['field']['#type'] = 'value';
+  $form['field']['cardinality'] = array(
+    '#type' => 'value',
+    '#value' => 1,
+  );
 }
 
 // UUID generators
