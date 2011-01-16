@@ -24,6 +24,24 @@ function uuid_menu() {
     'file' => 'uuid.admin.inc',
   );
 
+  $items['uuid/%'] = array(
+    'title' => 'Universally Unique IDentifier Lookup',
+    'description' => 'Find entities by UUID.',
+    'page callback' => 'uuid_goto',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['uuid/%/revision'] = array(
+    'title' => 'Universally Unique IDentifier Lookup',
+    'description' => 'Find entities by UUID.',
+    'page callback' => 'uuid_goto',
+    'page arguments' => array(1, FALSE),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
   return $items;
 }
 
@@ -32,6 +50,92 @@ function uuid_menu() {
  */
 function uuid_permissions() {
   return array('administer uuid');
+}
+
+// UUID functions
+/**
+ * Finds an entity record by UUID.
+ *
+ * @param $uuid
+ *  The UUID to use for the lookup.
+ */
+function uuid_find($uuid) {
+
+  foreach (field_info_fields() as $name => $field) {
+    if ('uuid' !== $field['type']) {
+      continue;
+    }
+
+    $query = new EntityFieldQuery;
+    $results = $query
+      ->fieldCondition($name, 'uuid', $uuid)
+      ->age(FIELD_LOAD_REVISION)
+      ->execute();
+
+    if ($results) {
+      return $results;
+    }
+  }
+
+  return array();
+}
+/**
+ * Finds an entity record by UUID.
+ *
+ * @param $uuid
+ *  The UUID to use for the lookup.
+ *
+ * @param $find_latest
+ *  Find the latest version of the record.
+ */
+function uuid_goto($uuid, $find_latest = TRUE) {
+
+  if (!uuid_is_well_formed($uuid)) {
+    drupal_set_message(t('Supplied value is not a UUID.'), 'error');
+    drupal_goto('<front>');
+    return;
+  }
+
+  $results = uuid_find($uuid);
+
+  if (!$results) {
+    drupal_set_message(t('Invalid UUID.'), 'error');
+    drupal_goto('<front>');
+  }
+
+  list($entity_type, $stub_entities) = each($results);
+
+  $entity_info = entity_get_info();
+  $structure = $entity_info[$entity_type];
+  unset($entity_info);
+
+  $entity = reset($stub_entities);
+
+  if ($entity_type == 'node' && !$find_latest) {
+    $path = sprintf('node/%d/revisions/%d/view', $entity->{$structure['entity keys']['id']}, $entity->{$structure['entity keys']['revision']});
+  }
+  else {
+    //$callback = ;
+    $uri = $structure['uri callback']($entity);
+    $path = $uri['path'];
+  }
+
+  drupal_goto($path);
+  return;
+}
+
+/**
+ * Check that a string appears to be in the format of a UUID.
+ *
+ * @param $uuid
+ *  The string to test.
+ *
+ * @return
+ *   Returns TRUE is the string is well formed.
+ */
+function uuid_is_well_formed($uuid) {
+  $match = preg_match("/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/", $uuid);
+  return $match === 1;
 }
 
 // Field Hooks
@@ -61,10 +165,29 @@ function uuid_field_is_empty($item, $field) {
  * Implements hook_field_attach_presave().
  */
 function uuid_field_attach_presave($entity_type, $entity) {
+  $target = '';
+
+  foreach (field_info_fields() as $name => $field) {
+
+    $bundles = array();
+    foreach ($field['bundles'] as $bundle) {
+      $bundles += array_keys($bundle);
+    }
+
+    if ('uuid' === $field['type'] && in_array($name, $bundles)) {
+      $target = $name;
+      break;
+    }
+  }
+
+  if (!$target) {
+    return;
+  }
+
   // We only set the UUID for new records or new revisions
-  if (empty($entity->field_uuid[LANGUAGE_NONE][0])
+  if (empty($entity->{$target}[LANGUAGE_NONE][0])
     || (isset($entity->revision) && $entity->revision === 1)) {
-    $entity->field_uuid[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
+    $entity->{$target}[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
   }
 }
 
@@ -109,7 +232,7 @@ function uuid_field_create_field($field) {
  * 
  */
 function uuid_field_update_field($field, $prior_field, $has_data) {
-  if (1 !== $field['cardinality']) {
+  if ('uuid' == $field['type'] && 1 !== $field['cardinality']) {
     $field['cardinality'] = 1;
     field_update_field($field);
     drupal_set_message(t("Cardinality for @field_name must always be 1.", array('@field_name' => $field['field_name'])), 'error');
@@ -124,11 +247,13 @@ function uuid_field_update_field($field, $prior_field, $has_data) {
  * This improves UX by hiding the forced value.
  */
 function uuid_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
-  $form['field']['#type'] = 'value';
-  $form['field']['cardinality'] = array(
-    '#type' => 'value',
-    '#value' => 1,
-  );
+  if ('uuid' == $field['type'] && 1 !== $field['cardinality']) {
+    $form['field']['#type'] = 'value';
+    $form['field']['cardinality'] = array(
+      '#type' => 'value',
+      '#value' => 1,
+    );
+  }
 }
 
 // UUID generators
@@ -147,13 +272,7 @@ function uuid_uuid_info() {
   $sources = array();
 
   // PECL and OSSP are 2 incompatiable implementations in PHP that use the same namespace.
-  if (function_exists('uuid_make')) {
-    $sources['ossp'] = array(
-      'callback' => 'uuid_ossp',
-      'title' => t('OSSP Extension'),
-    );
-  }
-  elseif (function_exists('uuid_create')) {
+  if (function_exists('uuid_create') && !function_exists('uuid_make')) {
     $sources['pecl'] = array(
       'callback' => 'uuid_pecl',
       'title' => t('PECL Extension'),
@@ -235,22 +354,6 @@ function uuid_com() {
  */
 function uuid_mysql() {
   return db_query('SELECT UUID()')->fetchField();
-}
-
-/**
- * Generates a UUID using the (somewhat broken) OSSP PHP extension.
- *
- * See http://www.ossp.org/pkg/lib/uuid/
- */
-function uuid_ossp() {
-  $v4 = NULL;
-  $out = '';
-
-  uuid_create(&$v4);
-  uuid_make($v4, UUID_MAKE_V4);
-  uuid_export($v4, UUID_FMT_STR, &$out);
-
-  return $out;
 }
 
 /**
