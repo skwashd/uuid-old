@@ -61,17 +61,14 @@ function uuid_permissions() {
  */
 function uuid_find($uuid) {
 
-  foreach (field_info_fields() as $name => $field) {
-    if ('uuid' !== $field['type']) {
-      continue;
-    }
-
+  foreach (variable_get('uuid_fields', array()) as $name) {
     $query = new EntityFieldQuery;
     $results = $query
       ->fieldCondition($name, 'uuid', $uuid)
       ->age(FIELD_LOAD_REVISION)
       ->execute();
 
+    // UUIDs are unique so return as soon as we have a result
     if ($results) {
       return $results;
     }
@@ -115,7 +112,6 @@ function uuid_goto($uuid, $find_latest = TRUE) {
     $path = sprintf('node/%d/revisions/%d/view', $entity->{$structure['entity keys']['id']}, $entity->{$structure['entity keys']['revision']});
   }
   else {
-    //$callback = ;
     $uri = $structure['uri callback']($entity);
     $path = $uri['path'];
   }
@@ -134,8 +130,7 @@ function uuid_goto($uuid, $find_latest = TRUE) {
  *   Returns TRUE is the string is well formed.
  */
 function uuid_is_well_formed($uuid) {
-  $match = preg_match("/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/", $uuid);
-  return $match === 1;
+  return preg_match("/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/", $uuid);
 }
 
 // Field Hooks
@@ -165,7 +160,6 @@ function uuid_field_is_empty($item, $field) {
  * Implements hook_field_attach_presave().
  */
 function uuid_field_attach_presave($entity_type, $entity) {
-  $target = '';
 
   foreach (field_info_fields() as $name => $field) {
 
@@ -175,19 +169,12 @@ function uuid_field_attach_presave($entity_type, $entity) {
     }
 
     if ('uuid' === $field['type'] && in_array($name, $bundles)) {
-      $target = $name;
-      break;
+      // We only set the UUID for new records or new revisions
+      if (empty($entity->{$name}[LANGUAGE_NONE][0])
+        || (isset($entity->revision) && $entity->revision === 1)) {
+        $entity->{$name}[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
+      }
     }
-  }
-
-  if (!$target) {
-    return;
-  }
-
-  // We only set the UUID for new records or new revisions
-  if (empty($entity->{$target}[LANGUAGE_NONE][0])
-    || (isset($entity->revision) && $entity->revision === 1)) {
-    $entity->{$target}[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
   }
 }
 
@@ -208,6 +195,9 @@ function uuid_field_widget_info_alter(&$info) {
 function uuid_field_create_field($field) {
   // All is good if cardinality is one, so exit early
   if ('uuid' == $field['type'] && 1 === $field['cardinality']) {
+    $field_info = variable_get('uuid_fields', array());
+    $field_info[$field['field_name']] = $field['field_name'];
+    variable_set('uuid_fields', $field_info);
     return;
   }
 
@@ -223,6 +213,18 @@ function uuid_field_create_field($field) {
 }
 
 /**
+ * Implements hook_field_delete_field().
+ */
+function uuid_field_delete_field($field) {
+  $field_info = variable_get('uuid_fields', array());
+  // All is good if cardinality is one, so exit early
+  if (!empty($field_info[$field['field_name']])) {
+    unset($field_info[$field['field_name']]);
+    variable_set('uuid_fields', $field_info);
+  }
+}
+
+/**
  * Implements hook_field_update_field().
  *
  * Ensures cardinality is always 1.
@@ -232,7 +234,7 @@ function uuid_field_create_field($field) {
  * 
  */
 function uuid_field_update_field($field, $prior_field, $has_data) {
-  if ('uuid' == $field['type'] && 1 !== $field['cardinality']) {
+  if ('uuid' == $field['type'] && 1 != $field['cardinality']) {
     $field['cardinality'] = 1;
     field_update_field($field);
     drupal_set_message(t("Cardinality for @field_name must always be 1.", array('@field_name' => $field['field_name'])), 'error');
@@ -247,7 +249,8 @@ function uuid_field_update_field($field, $prior_field, $has_data) {
  * This improves UX by hiding the forced value.
  */
 function uuid_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
-  if ('uuid' == $field['type'] && 1 !== $field['cardinality']) {
+  $columns = array_keys($form['#field']['columns']);
+  if ('uuid' == $columns[0]) {
     $form['field']['#type'] = 'value';
     $form['field']['cardinality'] = array(
       '#type' => 'value',

@@ -32,5 +32,7 @@ function uuid_field_schema($field) {
  * Implements hook_uninstall().
  */
 function uuid_uninstall() {
+  // Kill off our config variables
   variable_del('uuid_generator');
+  variable_del('uuid_fields');
 }
