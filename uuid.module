@@ -160,20 +160,13 @@ function uuid_field_is_empty($item, $field) {
  * Implements hook_field_attach_presave().
  */
 function uuid_field_attach_presave($entity_type, $entity) {
-
-  foreach (field_info_fields() as $name => $field) {
-
-    $bundles = array();
-    foreach ($field['bundles'] as $bundle) {
-      $bundles += array_keys($bundle);
-    }
-
-    if ('uuid' === $field['type'] && in_array($name, $bundles)) {
-      // We only set the UUID for new records or new revisions
-      if (empty($entity->{$name}[LANGUAGE_NONE][0])
-        || (isset($entity->revision) && $entity->revision === 1)) {
-        $entity->{$name}[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
-      }
+  $field_info = field_info_field_by_ids();
+  list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity); 
+  foreach (field_info_instances($entity_type, $bundle) as $field_name => $field) {
+    if ('uuid' === $field_info[$field['field_id']]['type'] // must be UUID and
+      && (empty($entity->{$field_info[$field['field_id']]['field_name']}[LANGUAGE_NONE][0]) // new entity
+        || (isset($entity->revision) && 1 === $entity->revision))) { // OR new revision
+        $entity->{$field_name}[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
     }
   }
 }
@@ -193,8 +186,13 @@ function uuid_field_widget_info_alter(&$info) {
  * @throws FieldException
  */
 function uuid_field_create_field($field) {
+
+  if ('uuid' !== $field['type']) {
+    return;
+  }
+
   // All is good if cardinality is one, so exit early
-  if ('uuid' == $field['type'] && 1 === $field['cardinality']) {
+  if (1 === $field['cardinality']) {
     $field_info = variable_get('uuid_fields', array());
     $field_info[$field['field_name']] = $field['field_name'];
     variable_set('uuid_fields', $field_info);
