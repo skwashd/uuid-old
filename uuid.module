@@ -193,23 +193,25 @@ function uuid_field_widget_info_alter(&$info) {
  * @throws FieldException
  */
 function uuid_field_create_field($field) {
-  // All is good if cardinality is one, so exit early
-  if ('uuid' == $field['type'] && 1 === $field['cardinality']) {
-    $field_info = variable_get('uuid_fields', array());
-    $field_info[$field['field_name']] = $field['field_name'];
-    variable_set('uuid_fields', $field_info);
-    return;
+  if ('uuid' == $field['type']) {
+    // Ensure cardinality isn't greater than 1.
+    if ($field['cardinality'] > 1) {
+      field_delete_field($field['field_name']);
+
+      db_delete('field_config')
+        ->condition('id', $field['id'])
+        ->execute();
+
+      field_cache_clear(TRUE);
+
+      throw new FieldException(t("Cardinality for @type must always be 1.", array('@field_name' => $field['type'])));
+    }
+    else {
+      $field_info = variable_get('uuid_fields', array());
+      $field_info[$field['field_name']] = $field['field_name'];
+      variable_set('uuid_fields', $field_info);
+    }
   }
-
-  field_delete_field($field['field_name']);
-
-  db_delete('field_config')
-    ->condition('id', $field['id'])
-    ->execute();
-
-  field_cache_clear(TRUE);
-
-  throw new FieldException(t("Cardinality for @type must always be 1.", array('@field_name' => $field['type'])));
 }
 
 /**
