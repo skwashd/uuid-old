@@ -60,6 +60,7 @@ function uuid_permissions() {
  *  The UUID to use for the lookup.
  */
 function uuid_find($uuid) {
+  $rows = array();
 
   foreach (variable_get('uuid_fields', array()) as $name) {
     $query = new EntityFieldQuery;
@@ -68,13 +69,10 @@ function uuid_find($uuid) {
       ->age(FIELD_LOAD_REVISION)
       ->execute();
 
-    // UUIDs are unique so return as soon as we have a result
-    if ($results) {
-      return $results;
-    }
+    $rows = array_merge_recursive($rows, $results);
   }
 
-  return array();
+  return $rows;
 }
 /**
  * Finds an entity record by UUID.
