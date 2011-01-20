@@ -192,7 +192,7 @@ function uuid_field_create_field($field) {
   }
 
   // All is good if cardinality is one, so exit early
-  if (1 === $field['cardinality']) {
+  if (1 == $field['cardinality']) {
     $field_info = variable_get('uuid_fields', array());
     $field_info[$field['field_name']] = $field['field_name'];
     variable_set('uuid_fields', $field_info);
