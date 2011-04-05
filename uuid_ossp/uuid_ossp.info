@@ -1,6 +1,6 @@
-; $Id$
-name = "UUID Generator using OSSP"
+name = "UUID OSSP"
 description = "Generate Universally Unique IDentifier (UUID) for content using the OSSP UUID library."
 core = 7.x
+package = uuid
 
 dependencies[] = uuid

@@ -1,0 +1,19 @@
+<?php
+
+module_load_include('module', 'uuid');
+
+/**
+ * Implements hook_comment_insert().
+ */
+function uuid_comment_comment_insert($comment) {
+  uuid_insert('comment', $comment->cid);
+}
+
+/**
+ * Implements hook_uuid_goto_<entity>().
+ */
+function uuid_comment_uuid_goto_comment($uuid_info, $find_latest) {
+  $comment = new StdClass();
+  $comment->cid = $uuid_info->id;
+  return comment_uri($comment);
+}

@@ -1,6 +1,4 @@
-; $Id$
 name = "Universally Unique IDentifier (UUID)"
 description = "Generate Universally Unique IDentifier (UUID) for content."
 core = 7.x
-
-dependencies[] = hidden_field
+package = uuid

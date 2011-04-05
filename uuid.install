@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 /**
  * @file
@@ -7,32 +6,56 @@
  */
 
 /**
- * Implements hook_field_schema().
+ * Implements hook_schema().
  */
-function uuid_field_schema($field) {
-  $columns = array(
-    'uuid' => array(
-      'type' => 'varchar',
-      'length' => 36, // 32 byte hex string with 4 dashes 
-      'not null' => TRUE
+function uuid_schema() {
+  $schema = array();
+  $schema['uuid'] = array(
+    'fields' => array(
+      'uuid' => array(
+        'type' => 'char',
+        'length' => 36,
+        'not null' => TRUE,
+        'description' => 'The Universally Unique Identifier.',
+      ),
+      'entity' => array(
+        'type' => 'varchar',
+        'length' => 32, // max length of field_config_instance.entity_type
+        'not null' => TRUE,
+        'description' => 'The entity referenced by the UUID.',
+      ),
+      'id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE, 
+        'not null' => TRUE,
+        'decription' => 'The identifier for the referenced entity.',
+      ),
+      'revision' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'unsigned' => TRUE, 
+        'description' => 'The revision of the referenced entity.',
+      ),
+    ),
+    'primary key' => array('uuid'),
+    'unique keys' => array(
+      'uuid_reference' => array('entity', 'id', 'revision'),
     ),
   );
+  return $schema;
+}
 
-  $indexes = array(
-    'uuid' => array('uuid'),
-  );
-
-  return array(
-    'columns' => $columns,
-    'indexes' => $indexes,
-  );
+/**
+ * Implements hook_install().
+ */
+function uuid_install() {
+  drupal_install_schema('uuid');
 }
 
 /**
  * Implements hook_uninstall().
  */
 function uuid_uninstall() {
-  // Kill off our config variables
   variable_del('uuid_generator');
-  variable_del('uuid_fields');
+  drupal_uninstall_schema('uuid');
 }

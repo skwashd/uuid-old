@@ -1,5 +1,4 @@
 <?php
-// $Id: uuid.admin.inc,v 1.1.2.9 2010/10/09 01:43:23 recidive Exp $
 
 /**
  * @file

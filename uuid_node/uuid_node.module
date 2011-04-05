@@ -1,0 +1,34 @@
+<?php
+
+module_load_include('module', 'uuid');
+
+/**
+ * Implements hook_node_insert().
+ */
+function uuid_node_node_insert($node) {
+  uuid_insert('node', $node->nid, $node->vid);
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function uuid_node_node_update($node){
+  $old_node = node_load($node->nid);
+  if ($old_node->vid != $node->vid) {
+    uuid_insert('node', $node->nid, $node->vid);
+  }
+}
+
+/**
+ * Return a URL for viewing the node
+ */
+function uuid_node_uuid_goto_node($uuid_info, $find_latest) {
+  if ($find_latest) {
+    $path = sprintf('node/%d', $uuid_info->id);
+  }
+  else {
+    $path = sprintf('node/%d/revisions/%d/view', $uuid_info->id, $uuid_info->revision);
+  }
+
+  return array('path' => $path);
+}

@@ -1,0 +1,6 @@
+name = UUID Comments
+description = UUID handler for comments.
+core = 7.x
+package = uuid
+
+dependencies[] = uuid

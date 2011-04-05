@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 /**
  * @file
@@ -53,28 +52,48 @@ function uuid_permissions() {
 }
 
 // UUID functions
+
 /**
- * Finds an entity record by UUID.
+ * Inserts an entry in to the UUID table.
+ */
+function uuid_insert($entity, $id, $revision) {
+
+  $fields = array(
+    'entity' => $entity,
+    'id' => $id,
+    'uuid' => uuid_uuid(),
+  );
+
+  if (!is_null($revision)) {
+    $fields['revision'] = $revision;
+  }
+
+  return db_insert('uuid')
+    ->fields($fields)
+    ->execute();
+}
+
+
+/**
+ * Finds a record by UUID.
  *
  * @param $uuid
  *  The UUID to use for the lookup.
  */
 function uuid_find($uuid) {
 
-  foreach (variable_get('uuid_fields', array()) as $name) {
-    $query = new EntityFieldQuery;
-    $results = $query
-      ->fieldCondition($name, 'uuid', $uuid)
-      ->age(FIELD_LOAD_REVISION)
-      ->execute();
+  $select = db_select('uuid', 'u')
+    ->fields('u', array('entity', 'id', 'revision'))
+    ->condition('uuid', $uuid);
 
-    // UUIDs are unique so return as soon as we have a result
-    if ($results) {
-      return $results;
-    }
+  $results = $select->execute()
+    ->fetchObject();
+
+  if (!$results) {
+    return NULL;
   }
 
-  return array();
+  return $results;
 }
 /**
  * Finds an entity record by UUID.
@@ -89,35 +108,28 @@ function uuid_goto($uuid, $find_latest = TRUE) {
 
   if (!uuid_is_well_formed($uuid)) {
     drupal_set_message(t('Supplied value is not a UUID.'), 'error');
-    drupal_goto('<front>');
-    return;
+    return drupal_goto('<front>');
   }
 
-  $results = uuid_find($uuid);
+  $result = uuid_find($uuid);
 
-  if (!$results) {
+  if (is_null($result)) {
     drupal_set_message(t('Invalid UUID.'), 'error');
-    drupal_goto('<front>');
+    return drupal_goto('<front>');
   }
 
-  list($entity_type, $stub_entities) = each($results);
+  $url = module_invoke_all('uuid_goto_' . $result->entity, $result, $find_latest);
+  if (count($url)) {
+    $options = array();
+    if (isset($url['options'])) {
+      $options = $url['options'];
+    }
 
-  $entity_info = entity_get_info();
-  $structure = $entity_info[$entity_type];
-  unset($entity_info);
-
-  $entity = reset($stub_entities);
-
-  if ($entity_type == 'node' && !$find_latest) {
-    $path = sprintf('node/%d/revisions/%d/view', $entity->{$structure['entity keys']['id']}, $entity->{$structure['entity keys']['revision']});
-  }
-  else {
-    $uri = $structure['uri callback']($entity);
-    $path = $uri['path'];
+    return drupal_goto($url['path'], $options);
   }
 
-  drupal_goto($path);
-  return;
+  drupal_set_message(t('No handler available for this entity type.'), 'error');
+  drupal_goto('<front>');
 }
 
 /**
@@ -131,130 +143,6 @@ function uuid_goto($uuid, $find_latest = TRUE) {
  */
 function uuid_is_well_formed($uuid) {
   return preg_match("/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/", $uuid);
-}
-
-// Field Hooks
-
-/**
- * Implements hook_field_info().
- */
-function uuid_field_info() {
-  return array(
-    'uuid' => array(
-      'label' => t('Universally Unique IDentifier'),
-      'description' => t('Stores a Universally Unique IDentifier'),
-      'default_widget' => 'hidden_value',
-      'default_formatter' => 'hidden',
-    ),
-  );
-}
-
-/**
- * Implements hook_field_is_empty().
- */
-function uuid_field_is_empty($item, $field) {
-  return empty($item['uuid']);
-}
-
-/**
- * Implements hook_field_attach_presave().
- */
-function uuid_field_attach_presave($entity_type, $entity) {
-  $field_info = field_info_field_by_ids();
-  list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity); 
-  foreach (field_info_instances($entity_type, $bundle) as $field_name => $field) {
-    if ('uuid' === $field_info[$field['field_id']]['type'] // must be UUID and
-      && (empty($entity->{$field_info[$field['field_id']]['field_name']}[LANGUAGE_NONE][0]) // new entity
-        || (isset($entity->revision) && 1 === $entity->revision))) { // OR new revision
-        $entity->{$field_name}[LANGUAGE_NONE][0]['uuid'] = uuid_uuid();
-    }
-  }
-}
-
-/**
- * Implements hook_field_widget_info_alter().
- */
-function uuid_field_widget_info_alter(&$info) {
-  $info['hidden_value']['field types'][] = 'uuid';
-}
-
-/**
- * Implements hook_field_create_field().
- *
- * Ensures cardinality is always 1 and errors if it doesn't.
- *
- * @throws FieldException
- */
-function uuid_field_create_field($field) {
-
-  if ('uuid' !== $field['type']) {
-    return;
-  }
-
-  // All is good if cardinality is one, so exit early
-  if (1 == $field['cardinality']) {
-    $field_info = variable_get('uuid_fields', array());
-    $field_info[$field['field_name']] = $field['field_name'];
-    variable_set('uuid_fields', $field_info);
-    return;
-  }
-
-  field_delete_field($field['field_name']);
-
-  db_delete('field_config')
-    ->condition('id', $field['id'])
-    ->execute();
-
-  field_cache_clear(TRUE);
-
-  throw new FieldException(t("Cardinality for @type must always be 1.", array('@field_name' => $field['type'])));
-}
-
-/**
- * Implements hook_field_delete_field().
- */
-function uuid_field_delete_field($field) {
-  $field_info = variable_get('uuid_fields', array());
-  // All is good if cardinality is one, so exit early
-  if (!empty($field_info[$field['field_name']])) {
-    unset($field_info[$field['field_name']]);
-    variable_set('uuid_fields', $field_info);
-  }
-}
-
-/**
- * Implements hook_field_update_field().
- *
- * Ensures cardinality is always 1.
- *
- * This is a hack around field_ui not catching FieldUpdateForbiddenException 
- * from hook_field_update_forbid() implementors. See http://drupal.org/node/1014506
- * 
- */
-function uuid_field_update_field($field, $prior_field, $has_data) {
-  if ('uuid' == $field['type'] && 1 != $field['cardinality']) {
-    $field['cardinality'] = 1;
-    field_update_field($field);
-    drupal_set_message(t("Cardinality for @field_name must always be 1.", array('@field_name' => $field['field_name'])), 'error');
-  }
-}
-
-// Form Hacks
-
-/**
- * Implements hook_form_alter().
- *
- * This improves UX by hiding the forced value.
- */
-function uuid_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
-  $columns = array_keys($form['#field']['columns']);
-  if ('uuid' == $columns[0]) {
-    $form['field']['#type'] = 'value';
-    $form['field']['cardinality'] = array(
-      '#type' => 'value',
-      '#value' => 1,
-    );
-  }
 }
 
 // UUID generators
@@ -345,7 +233,8 @@ function uuid_uuid() {
  * See http://php.net/com_create_guid
  */
 function uuid_com() {
-  return trim(com_create_guid(), '{}');
+  // remove {} wrapper and make lower case to keep result consistent
+  return strtolower(trim(com_create_guid(), '{}'));
 }
 
 /**
@@ -387,5 +276,3 @@ function uuid_php() {
     mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(0, 65535)
   );
 }
-
-
