@@ -10,4 +10,3 @@ Current features include:
 You should only install this module if other module advised you to do so, or 
 if you plan to use UUIDs on your site, with custom code.
 
-$Id$
