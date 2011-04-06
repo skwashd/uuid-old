@@ -1,0 +1,44 @@
+<?php
+
+// Include UUID schema helper functions.
+module_load_include('inc', 'uuid', 'uuid.schema');
+
+/**
+ * Implements hook_schema_alter().
+ */
+function uuid_file_schema_alter(&$schema) {
+  $schema['file_managed']['fields']['uuid'] = array(
+    'type' => 'char',
+    'length' => 36,
+    'not null' => TRUE,
+    'default' => '',
+    'description' => 'The Universally Unique Identifier.',
+  );
+  $schema['file_managed']['indexes']['uuid'] = array('uuid');
+}
+
+/**
+ * Implements hook_install().
+ */
+function uuid_file_install() {
+  $schema = array(
+    'file' => array(),
+  );
+
+  uuid_file_schema_alter($schema);
+
+  uuid_add_field($schema, 'file_managed');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uuid_file_uninstall() {
+  $schema = array(
+    'file' => array(),
+  );
+
+  uuid_file_schema_alter($schema);
+
+  uuid_drop_field($schema, 'file_managed');
+}

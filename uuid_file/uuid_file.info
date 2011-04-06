@@ -1,0 +1,6 @@
+name = UUID Files
+description = UUID handler for files.
+core = 7.x
+package = uuid
+
+dependencies[] = uuid
