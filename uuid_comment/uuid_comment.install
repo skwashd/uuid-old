@@ -1,0 +1,44 @@
+<?php
+
+// Include UUID schema helper functions.
+module_load_include('inc', 'uuid', 'uuid.schema');
+
+/**
+ * Implements hook_schema_alter().
+ */
+function uuid_comment_schema_alter(&$schema) {
+  $schema['comment']['fields']['uuid'] = array(
+    'type' => 'char',
+    'length' => 36,
+    'not null' => TRUE,
+    'default' => '',
+    'description' => 'The Universally Unique Identifier.',
+  );
+  $schema['comment']['indexes']['uuid'] = array('uuid');
+}
+
+/**
+ * Implements hook_install().
+ */
+function uuid_comment_install() {
+  $schema = array(
+    'comment' => array(),
+  );
+
+  uuid_comment_schema_alter($schema);
+
+  uuid_add_field($schema, 'comment');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uuid_comment_uninstall() {
+  $schema = array(
+    'comment' => array(),
+  );
+
+  uuid_comment_schema_alter($schema);
+
+  uuid_drop_field($schema, 'comment');
+}
