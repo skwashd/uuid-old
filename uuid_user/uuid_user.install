@@ -1,0 +1,37 @@
+<?php
+
+// Include UUID schema helper functions.
+module_load_include('inc', 'uuid', 'uuid.schema');
+
+/**
+ * Implements hook_schema_alter().
+ */
+function uuid_user_schema_alter(&$schema) {
+  uuid_schema_generate($schema, 'users');
+}
+
+/**
+ * Implements hook_install().
+ */
+function uuid_user_install() {
+  $schema = array(
+    'users' => array(),
+  );
+
+  uuid_user_schema_alter($schema);
+
+  uuid_add_field($schema, 'users');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uuid_user_uninstall() {
+  $schema = array(
+    'users' => array(),
+  );
+
+  uuid_user_schema_alter($schema);
+
+  uuid_drop_field($schema, 'users');
+}

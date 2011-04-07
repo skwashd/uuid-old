@@ -1,0 +1,7 @@
+name = UUID Users
+description = UUID handler for users.
+core = 7.x
+package = uuid
+
+dependencies[] = uuid
+dependencies[] = user
