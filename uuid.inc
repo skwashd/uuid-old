@@ -15,6 +15,7 @@ function uuid_uuid() {
   static $callback;
   if (is_null($callback)) {
     $var_name = 'uuid_generator';
+    $generators = module_invoke_all('uuid_info');
     $generator = variable_get($var_name, NULL);
     if (!is_null($generator) && isset($generators[$generator])) {
       $config = $generators[$generator];
