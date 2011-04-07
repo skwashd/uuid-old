@@ -7,14 +7,7 @@ module_load_include('inc', 'uuid', 'uuid.schema');
  * Implements hook_schema_alter().
  */
 function uuid_role_schema_alter(&$schema) {
-  $schema['role']['fields']['uuid'] = array(
-    'type' => 'char',
-    'length' => 36,
-    'not null' => TRUE,
-    'default' => '',
-    'description' => 'The Universally Unique Identifier.',
-  );
-  $schema['role']['indexes']['uuid'] = array('uuid');
+  uuid_schema_generate($schema, 'role');
 }
 
 /**

@@ -39,3 +39,28 @@ function uuid_drop_field($schema, $table) {
     db_drop_field($table, $field);
   }
 }
+
+/**
+ * Adds a UUID column to the schema for the specifed table.
+ *
+ * @param
+ *   $schema Reference to the schema structure to update.
+ *
+ * @param
+ *   $table The name of the table to add the UUID column to.
+ *
+ * @param
+ *   $col_name The name of the UUID column.
+ *
+ * @see hook_schema_alter()
+ */
+function uuid_schema_generate(&$schema, $table, $col_name = 'uuid') {
+  $schema[$table]['fields'][$col_name] = array(
+    'type' => 'char',
+    'length' => 36,
+    'not null' => TRUE,
+    'default' => '',
+    'description' => 'The Universally Unique Identifier.',
+  );
+  $schema[$table]['indexes']['uuid'] = array($col_name);
+}
