@@ -22,7 +22,7 @@ function uuid_file_schema_alter(&$schema) {
  */
 function uuid_file_install() {
   $schema = array(
-    'file' => array(),
+    'file_managed' => array(),
   );
 
   uuid_file_schema_alter($schema);
