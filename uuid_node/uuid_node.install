@@ -29,7 +29,7 @@ function uuid_node_schema_alter(&$schema) {
 function uuid_node_install() {
   $schema = array(
     'node' => array(),
-    'node_revisions' => array()
+    'node_revision' => array()
   );
 
   uuid_node_schema_alter($schema);
@@ -44,7 +44,7 @@ function uuid_node_install() {
 function uuid_node_uninstall() {
   $schema = array(
     'node' => array(),
-    'node_revisions' => array()
+    'node_revision' => array()
   );
 
   uuid_node_schema_alter($schema);

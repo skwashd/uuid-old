@@ -23,7 +23,6 @@ function uuid_add_field($schema, $table) {
   }
 
   foreach ($schema[$table]['indexes'] as $name => $fields) {
-    dlm("adding index '$name' to table '{$table}'");
     db_add_index($table, $name, $fields);
   }
 }
