@@ -1,0 +1,7 @@
+name = UUID Roles
+description = UUID handler for user roles.
+core = 7.x
+package = uuid
+
+dependencies[] = uuid
+dependencies[] = user
