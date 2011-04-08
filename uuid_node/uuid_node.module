@@ -6,15 +6,16 @@ module_load_include('inc', 'uuid');
  * Implements hook_node_presave().
  */
 function uuid_node_node_presave($node) {
-  if (!$node->nid) {
+  if (empty($node->uuid)) {
     $node->uuid = uuid_uuid();
+  }
+
+  if (1 == $node->revision) {
     $node->vuuid = uuid_uuid();
   }
-  else {
-    $old_node = node_load($node->nid);
-    if ($old_node->vid != $node->vid) {
-      $node->vuuid = uuid_uuid();
-    }
+
+  if (empty($node->vuuid)) {
+    $node->vuuid = uuid_uuid();
   }
 }
 

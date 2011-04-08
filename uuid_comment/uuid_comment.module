@@ -7,21 +7,35 @@ module_load_include('inc', 'uuid');
  */
 function uuid_comment_comment_presave($comment) {
   // We generate the UUID here so it can be used by other hooks.
-  if (is_null($comment->cid)) {
+  if (empty($comment->uuid)) {
     $comment->uuid = uuid_uuid();
   }
+}
+
+/**
+ * Saves the UUID for a comment
+ *
+ * We have to save the UUID here because comments is "special" when it comes 
+ * to handling writes. It is eSPECIALy frustrating that comments doesn't
+ * support hook_schema_alter(). @link http://drupal.org/node/1120412
+ */
+function uuid_comment_uuid_save($comment) {
+  db_update('comment')
+    ->fields(array('uuid' => $comment->uuid))
+    ->condition('cid', $comment->cid)
+    ->execute();
 }
 
 /**
  * Implements hook_comment_insert().
  */
 function uuid_comment_comment_insert($comment) {
-  /*
-    We save the UUID here because comments is "special" when it comes 
-    to handling writes. eSPECIALy frustrating!
-  */
-  db_update('comment')
-    ->fields(array('uuid' => $comment->uuid))
-    ->condition('cid', $comment->cid)
-    ->execute();
+  uuid_comment_uuid_save($comment);
+}
+
+/**
+ * Implements hook_comment_update().
+ */
+function uuid_comment_comment_update($comment) {
+  uuid_comment_uuid_save($comment);
 }

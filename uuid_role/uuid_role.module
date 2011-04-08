@@ -30,7 +30,7 @@ function uuid_role_user_role_insert($role) {
  * Implements hook_user_role_update().
  */
 function uuid_role_user_role_update($role) {
-  if (!isset($role->uuid)) {
+  if (empty($role->uuid)) {
     return uuid_role_add_uuid($role);
   }
 
