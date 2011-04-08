@@ -3,7 +3,7 @@
 /**
  * Implements hook_uuid_info().
  */
-function uuid_uuid_info() {
+function uuid_ossp_uuid_info() {
   $sources = array();
 
   if (function_exists('uuid_make')) {
