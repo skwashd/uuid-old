@@ -28,7 +28,7 @@ function uuid_file_install() {
  */
 function uuid_file_uninstall() {
   $schema = array(
-    'file' => array(),
+    'file_managed' => array(),
   );
 
   uuid_file_schema_alter($schema);
