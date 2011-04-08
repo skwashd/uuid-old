@@ -28,7 +28,7 @@ function uuid_role_install() {
  */
 function uuid_role_uninstall() {
   $schema = array(
-    'file' => array(),
+    'role' => array(),
   );
 
   uuid_role_schema_alter($schema);
