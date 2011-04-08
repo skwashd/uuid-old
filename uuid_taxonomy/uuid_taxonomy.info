@@ -1,0 +1,8 @@
+name = UUID Taxonomy
+description = UUID handler for taxonomy terms.
+core = 7.x
+package = uuid
+
+dependencies[] = uuid
+dependencies[] = taxonomy
+

@@ -1,0 +1,10 @@
+<?php
+
+/**
+ * Implements hook_taxonomy_term_presave().
+ */
+function uuid_taxonomy_term_presave($term) {
+  if (empty($term->uuid)) {
+    $term->uuid = uuid_uuid();
+  }
+}
