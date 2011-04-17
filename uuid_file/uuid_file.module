@@ -6,7 +6,7 @@ module_load_include('inc', 'uuid');
  * Implements hook_file_presave().
  */
 function uuid_file_file_presave($file) {
-  if (empty($file->fid)) {
+  if (empty($file->uuid)) {
     $file->uuid = uuid_uuid();
   }
 }
